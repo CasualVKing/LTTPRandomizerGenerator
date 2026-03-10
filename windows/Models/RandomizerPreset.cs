@@ -18,6 +18,18 @@ namespace LTTPRandomizerGenerator.Models
         [JsonIgnore]
         public bool IsBuiltIn { get; set; }
 
+        /// <summary>
+        /// True only for the "Custom" sentinel entry at the end of the preset list.
+        /// </summary>
+        [JsonIgnore]
+        public bool IsCustomSentinel { get; set; }
+
+        public static readonly RandomizerPreset CustomSentinel = new()
+        {
+            Name = "Custom",
+            IsCustomSentinel = true,
+        };
+
         public override string ToString() => Name;
     }
 
@@ -25,6 +37,26 @@ namespace LTTPRandomizerGenerator.Models
     {
         public static IReadOnlyList<RandomizerPreset> All { get; } = new List<RandomizerPreset>
         {
+            new()
+            {
+                Name = "Vanilla",
+                IsBuiltIn = true,
+                Settings = new()
+                {
+                    Goal = "ganon",
+                    Crystals = new() { Tower = "7", Ganon = "7" },
+                    ItemPlacement = "basic",
+                    DungeonItems = "standard",
+                    Accessibility = "items",
+                    Mode = "standard",
+                    Entrances = "none",
+                    Enemizer = new() { BossShuffle = "none", EnemyShuffle = "none" },
+                    Hints = "on",
+                    Weapons = "vanilla",
+                    Item = new() { Pool = "normal", Functionality = "normal" },
+                    Spoilers = "on",
+                }
+            },
             new()
             {
                 Name = "Quick Run",

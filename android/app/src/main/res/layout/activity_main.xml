@@ -1,214 +1,303 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#1E1E2E">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:layout_height="match_parent">
 
-        <!-- Header -->
-        <TextView
-            android:text="@string/app_title"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:textColor="#6C63FF"
-            android:layout_marginBottom="4dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-        <TextView
-            android:text="@string/app_subtitle"
-            android:textSize="12sp"
-            android:textColor="#888899"
-            android:layout_marginBottom="16dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-
-        <!-- ROM picker -->
-        <TextView android:text="@string/base_rom_label" android:textColor="#B0B0CC"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        <LinearLayout android:orientation="horizontal" android:layout_marginTop="4dp"
-            android:layout_width="match_parent" android:layout_height="wrap_content">
-            <TextView android:id="@+id/romPathText"
-                android:hint="@string/rom_path_hint" android:textColor="#E0E0F0"
-                android:textColorHint="#555568" android:background="#2A2A3E"
-                android:padding="8dp" android:layout_weight="1"
-                android:layout_width="0dp" android:layout_height="wrap_content"/>
-            <Button android:id="@+id/browseRomBtn" android:text="@string/browse_rom"
-                android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
-                android:layout_marginStart="8dp"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        </LinearLayout>
-
-        <!-- Output picker -->
-        <TextView android:text="@string/output_folder_label" android:textColor="#B0B0CC"
-            android:layout_marginTop="12dp"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        <LinearLayout android:orientation="horizontal" android:layout_marginTop="4dp"
-            android:layout_width="match_parent" android:layout_height="wrap_content">
-            <TextView android:id="@+id/outputPathText"
-                android:hint="@string/output_path_hint" android:textColor="#E0E0F0"
-                android:textColorHint="#555568" android:background="#2A2A3E"
-                android:padding="8dp" android:layout_weight="1"
-                android:layout_width="0dp" android:layout_height="wrap_content"/>
-            <Button android:id="@+id/browseOutputBtn" android:text="@string/browse_output"
-                android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
-                android:layout_marginStart="8dp"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        </LinearLayout>
-
-        <!-- Output hint -->
-        <TextView
-            android:text="@string/output_hint"
-            android:textColor="#555568"
-            android:textSize="11sp"
-            android:layout_marginTop="4dp"
-            android:layout_marginStart="4dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-
-        <!-- Seed input (optional, for racing) -->
-        <TextView android:text="@string/seed_label" android:textColor="#888899"
-            android:layout_marginTop="12dp"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        <LinearLayout android:orientation="horizontal" android:layout_marginTop="4dp"
-            android:layout_width="match_parent" android:layout_height="wrap_content">
-            <EditText android:id="@+id/seedInputEdit"
-                android:hint="@string/seed_hint" android:textColor="#E0E0F0"
-                android:textColorHint="#555568" android:background="#2A2A3E"
-                android:padding="8dp" android:layout_weight="1"
-                android:inputType="text" android:maxLines="1"
-                android:layout_width="0dp" android:layout_height="wrap_content"/>
-            <Button android:id="@+id/loadSeedBtn" android:text="@string/load_seed"
-                android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
-                android:layout_marginStart="8dp"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-            <Button android:id="@+id/clearSeedBtn" android:text="✕"
-                android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
-                android:visibility="gone"
-                android:layout_marginStart="4dp"
-                android:minWidth="0dp" android:paddingHorizontal="12dp"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        </LinearLayout>
-
-        <!-- Divider -->
-        <View android:background="#3A3A55" android:layout_marginVertical="16dp"
-            android:layout_width="match_parent" android:layout_height="1dp"/>
-
-        <!-- Sprite section (always visible) -->
-        <TextView android:text="@string/sprite_section_label" android:textColor="#6C63FF"
-            android:textSize="11sp" android:textStyle="bold" android:letterSpacing="0.1"
-            android:layout_marginBottom="8dp"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        <LinearLayout android:id="@+id/spriteContainer"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginBottom="8dp"
-            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+            android:padding="16dp">
 
-        <!-- Divider -->
-        <View android:background="#3A3A55" android:layout_marginVertical="8dp"
-            android:layout_width="match_parent" android:layout_height="1dp"/>
-
-        <!-- Preset row -->
-        <TextView android:text="@string/preset_section_label" android:textColor="#6C63FF"
-            android:textSize="11sp" android:textStyle="bold" android:letterSpacing="0.1"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        <Spinner android:id="@+id/presetSpinner"
-            android:backgroundTint="#3A3A55" android:popupBackground="#2A2A3E"
-            android:layout_marginTop="4dp"
-            android:layout_width="match_parent" android:layout_height="wrap_content"/>
-        <TextView android:id="@+id/unsavedText"
-            android:text="@string/unsaved_label"
-            android:textColor="#888899"
-            android:textStyle="italic"
-            android:visibility="gone"
-            android:layout_marginTop="2dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-
-        <LinearLayout android:orientation="horizontal" android:layout_marginTop="8dp"
-            android:layout_width="match_parent" android:layout_height="wrap_content">
-            <EditText android:id="@+id/presetNameEdit"
-                android:hint="@string/preset_name_hint" android:textColor="#E0E0F0"
-                android:textColorHint="#555568" android:background="#2A2A3E"
-                android:padding="8dp" android:layout_weight="1"
-                android:layout_width="0dp" android:layout_height="wrap_content"/>
-            <Button android:id="@+id/savePresetBtn" android:text="@string/save_preset"
-                android:backgroundTint="#6C63FF" android:textColor="@android:color/white"
-                android:layout_marginStart="8dp"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-            <Button android:id="@+id/deletePresetBtn" android:text="@string/delete_preset"
-                android:backgroundTint="#AA3333" android:textColor="@android:color/white"
-                android:enabled="false" android:layout_marginStart="4dp"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        </LinearLayout>
-
-        <!-- Divider -->
-        <View android:background="#3A3A55" android:layout_marginVertical="16dp"
-            android:layout_width="match_parent" android:layout_height="1dp"/>
-
-        <!-- Customization (dynamically populated) -->
-        <TextView android:id="@+id/customizationToggle"
-            android:text="@string/customization_toggle_collapsed"
-            android:textColor="#6C63FF"
-            android:textSize="11sp" android:textStyle="bold" android:letterSpacing="0.1"
-            android:layout_marginBottom="8dp"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        <LinearLayout android:id="@+id/customizationContainer"
-            android:orientation="vertical"
-            android:visibility="gone"
-            android:layout_marginBottom="8dp"
-            android:layout_width="match_parent" android:layout_height="wrap_content"/>
-
-        <!-- Divider -->
-        <View android:background="#3A3A55" android:layout_marginVertical="8dp"
-            android:layout_width="match_parent" android:layout_height="1dp"/>
-
-        <!-- Settings (dynamically populated) -->
-        <TextView android:id="@+id/settingsToggle"
-            android:text="@string/settings_toggle_collapsed"
-            android:textColor="#6C63FF"
-            android:textSize="11sp" android:textStyle="bold" android:letterSpacing="0.1"
-            android:layout_marginBottom="8dp"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        <LinearLayout android:id="@+id/settingsContainer"
-            android:orientation="vertical"
-            android:visibility="gone"
-            android:layout_width="match_parent" android:layout_height="wrap_content"/>
-
-        <!-- Generate button -->
-        <Button android:id="@+id/generateBtn"
-            android:text="@string/generate"
-            android:backgroundTint="#6C63FF" android:textColor="@android:color/white"
-            android:textSize="16sp" android:textStyle="bold"
-            android:layout_marginTop="20dp" android:padding="14dp"
-            android:enabled="false"
-            android:layout_width="match_parent" android:layout_height="wrap_content"/>
-
-        <!-- Progress + status -->
-        <ProgressBar android:id="@+id/progressBar"
-            android:indeterminate="true" android:visibility="gone"
-            android:layout_marginTop="12dp"
-            android:layout_width="match_parent" android:layout_height="wrap_content"/>
-        <TextView android:id="@+id/statusText"
-            android:textColor="#B0B0CC" android:layout_marginTop="8dp"
-            android:layout_width="match_parent" android:layout_height="wrap_content"/>
-        <LinearLayout android:orientation="horizontal" android:layout_marginTop="4dp"
-            android:id="@+id/seedLinkRow" android:visibility="gone"
-            android:layout_width="match_parent" android:layout_height="wrap_content">
-            <TextView android:id="@+id/seedLinkText"
+            <!-- Header -->
+            <TextView
+                android:text="@string/app_title"
+                android:textSize="22sp"
+                android:textStyle="bold"
                 android:textColor="#6C63FF"
-                android:layout_weight="1"
-                android:layout_width="0dp" android:layout_height="wrap_content"/>
-            <Button android:id="@+id/copySeedBtn" android:text="@string/copy_seed"
-                android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
-                android:layout_marginStart="8dp"
-                android:minWidth="0dp" android:paddingHorizontal="12dp"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        </LinearLayout>
+                android:layout_marginBottom="4dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+            <TextView
+                android:text="@string/app_subtitle"
+                android:textSize="12sp"
+                android:textColor="#888899"
+                android:layout_marginBottom="16dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
 
-    </LinearLayout>
-</ScrollView>
+            <!-- ROM picker -->
+            <TextView android:text="@string/base_rom_label" android:textColor="#B0B0CC"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <LinearLayout android:orientation="horizontal" android:layout_marginTop="4dp"
+                android:layout_width="match_parent" android:layout_height="wrap_content">
+                <TextView android:id="@+id/romPathText"
+                    android:hint="@string/rom_path_hint" android:textColor="#E0E0F0"
+                    android:textColorHint="#555568" android:background="#2A2A3E"
+                    android:padding="8dp" android:layout_weight="1"
+                    android:layout_width="0dp" android:layout_height="wrap_content"/>
+                <Button android:id="@+id/browseRomBtn" android:text="@string/browse_rom"
+                    android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
+                    android:layout_marginStart="8dp"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            </LinearLayout>
+
+            <!-- Output picker -->
+            <TextView android:text="@string/output_folder_label" android:textColor="#B0B0CC"
+                android:layout_marginTop="12dp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <LinearLayout android:orientation="horizontal" android:layout_marginTop="4dp"
+                android:layout_width="match_parent" android:layout_height="wrap_content">
+                <TextView android:id="@+id/outputPathText"
+                    android:hint="@string/output_path_hint" android:textColor="#E0E0F0"
+                    android:textColorHint="#555568" android:background="#2A2A3E"
+                    android:padding="8dp" android:layout_weight="1"
+                    android:layout_width="0dp" android:layout_height="wrap_content"/>
+                <Button android:id="@+id/browseOutputBtn" android:text="@string/browse_output"
+                    android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
+                    android:layout_marginStart="8dp"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            </LinearLayout>
+
+            <!-- Output hint -->
+            <TextView
+                android:text="@string/output_hint"
+                android:textColor="#555568"
+                android:textSize="11sp"
+                android:layout_marginTop="4dp"
+                android:layout_marginStart="4dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <!-- Seed input (optional, for racing) -->
+            <TextView android:text="@string/seed_label" android:textColor="#888899"
+                android:layout_marginTop="12dp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <LinearLayout android:orientation="horizontal" android:layout_marginTop="4dp"
+                android:layout_width="match_parent" android:layout_height="wrap_content">
+                <EditText android:id="@+id/seedInputEdit"
+                    android:hint="@string/seed_hint" android:textColor="#E0E0F0"
+                    android:textColorHint="#555568" android:background="#2A2A3E"
+                    android:padding="8dp" android:layout_weight="1"
+                    android:inputType="text" android:maxLines="1"
+                    android:layout_width="0dp" android:layout_height="wrap_content"/>
+                <Button android:id="@+id/loadSeedBtn" android:text="@string/load_seed"
+                    android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
+                    android:layout_marginStart="8dp"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+                <Button android:id="@+id/clearSeedBtn" android:text="✕"
+                    android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
+                    android:visibility="gone"
+                    android:layout_marginStart="4dp"
+                    android:minWidth="0dp" android:paddingHorizontal="12dp"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            </LinearLayout>
+
+            <!-- Divider -->
+            <View android:background="#3A3A55" android:layout_marginVertical="16dp"
+                android:layout_width="match_parent" android:layout_height="1dp"/>
+
+            <!-- Sprite section (always visible) -->
+            <TextView android:text="@string/sprite_section_label" android:textColor="#6C63FF"
+                android:textSize="11sp" android:textStyle="bold" android:letterSpacing="0.1"
+                android:layout_marginBottom="8dp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <LinearLayout android:id="@+id/spriteContainer"
+                android:orientation="vertical"
+                android:layout_marginBottom="8dp"
+                android:layout_width="match_parent" android:layout_height="wrap_content"/>
+
+            <!-- Divider -->
+            <View android:background="#3A3A55" android:layout_marginVertical="8dp"
+                android:layout_width="match_parent" android:layout_height="1dp"/>
+
+            <!-- Preset row -->
+            <TextView android:text="@string/preset_section_label" android:textColor="#6C63FF"
+                android:textSize="11sp" android:textStyle="bold" android:letterSpacing="0.1"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <Spinner android:id="@+id/presetSpinner"
+                android:backgroundTint="#3A3A55" android:popupBackground="#2A2A3E"
+                android:layout_marginTop="4dp"
+                android:layout_width="match_parent" android:layout_height="wrap_content"/>
+
+            <LinearLayout android:orientation="horizontal" android:layout_marginTop="8dp"
+                android:layout_width="match_parent" android:layout_height="wrap_content">
+                <EditText android:id="@+id/presetNameEdit"
+                    android:hint="@string/preset_name_hint" android:textColor="#E0E0F0"
+                    android:textColorHint="#555568" android:background="#2A2A3E"
+                    android:padding="8dp" android:layout_weight="1"
+                    android:visibility="gone"
+                    android:layout_width="0dp" android:layout_height="wrap_content"/>
+                <Button android:id="@+id/savePresetBtn" android:text="@string/save_preset"
+                    android:backgroundTint="#6C63FF" android:textColor="@android:color/white"
+                    android:layout_marginStart="8dp"
+                    android:visibility="gone"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+                <Button android:id="@+id/deletePresetBtn" android:text="@string/delete_preset"
+                    android:backgroundTint="#AA3333" android:textColor="@android:color/white"
+                    android:layout_marginStart="4dp"
+                    android:visibility="gone"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            </LinearLayout>
+
+            <!-- Divider -->
+            <View android:background="#3A3A55" android:layout_marginVertical="16dp"
+                android:layout_width="match_parent" android:layout_height="1dp"/>
+
+            <!-- Customization (dynamically populated) -->
+            <TextView android:id="@+id/customizationToggle"
+                android:text="@string/customization_toggle_collapsed"
+                android:textColor="#6C63FF"
+                android:textSize="11sp" android:textStyle="bold" android:letterSpacing="0.1"
+                android:layout_marginBottom="8dp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <LinearLayout android:id="@+id/customizationContainer"
+                android:orientation="vertical"
+                android:visibility="gone"
+                android:layout_marginBottom="8dp"
+                android:layout_width="match_parent" android:layout_height="wrap_content"/>
+
+            <!-- Divider -->
+            <View android:background="#3A3A55" android:layout_marginVertical="8dp"
+                android:layout_width="match_parent" android:layout_height="1dp"/>
+
+            <!-- Settings (dynamically populated) -->
+            <TextView android:id="@+id/settingsToggle"
+                android:text="@string/settings_toggle_collapsed"
+                android:textColor="#6C63FF"
+                android:textSize="11sp" android:textStyle="bold" android:letterSpacing="0.1"
+                android:layout_marginBottom="8dp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <LinearLayout android:id="@+id/settingsContainer"
+                android:orientation="vertical"
+                android:visibility="gone"
+                android:layout_width="match_parent" android:layout_height="wrap_content"/>
+
+            <!-- Generate button -->
+            <Button android:id="@+id/generateBtn"
+                android:text="@string/generate"
+                android:backgroundTint="#6C63FF" android:textColor="@android:color/white"
+                android:textSize="16sp" android:textStyle="bold"
+                android:layout_marginTop="20dp" android:padding="14dp"
+                android:enabled="false"
+                android:layout_width="match_parent" android:layout_height="wrap_content"/>
+
+            <!-- Progress + status (shown below generate when no overlay) -->
+            <ProgressBar android:id="@+id/progressBar"
+                android:indeterminate="true" android:visibility="gone"
+                android:layout_marginTop="12dp"
+                android:layout_width="match_parent" android:layout_height="wrap_content"/>
+            <TextView android:id="@+id/statusText"
+                android:textColor="#B0B0CC" android:layout_marginTop="8dp"
+                android:layout_width="match_parent" android:layout_height="wrap_content"/>
+            <LinearLayout android:orientation="horizontal" android:layout_marginTop="4dp"
+                android:id="@+id/seedLinkRow" android:visibility="gone"
+                android:layout_width="match_parent" android:layout_height="wrap_content">
+                <TextView android:id="@+id/seedLinkText"
+                    android:textColor="#6C63FF"
+                    android:layout_weight="1"
+                    android:layout_width="0dp" android:layout_height="wrap_content"/>
+                <Button android:id="@+id/copySeedBtn" android:text="@string/copy_seed"
+                    android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
+                    android:layout_marginStart="8dp"
+                    android:minWidth="0dp" android:paddingHorizontal="12dp"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Generation overlay — covers screen during ROM generation -->
+    <FrameLayout android:id="@+id/generatingOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#E61E1E2E"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="32dp">
+
+            <!-- Spinner shown during generation -->
+            <ProgressBar android:id="@+id/overlaySpinner"
+                android:indeterminateTint="#6C63FF"
+                android:layout_width="64dp"
+                android:layout_height="64dp"/>
+
+            <!-- Checkmark shown on completion -->
+            <TextView android:id="@+id/overlayCheckmark"
+                android:text="✓"
+                android:textSize="56sp"
+                android:textColor="#4CAF50"
+                android:visibility="gone"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <!-- Status text -->
+            <TextView android:id="@+id/overlayStatus"
+                android:textColor="#E0E0F0"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:layout_marginTop="20dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <!-- Seed hash shown on completion -->
+            <TextView android:id="@+id/overlaySeedHash"
+                android:textColor="#888899"
+                android:textSize="13sp"
+                android:gravity="center"
+                android:visibility="gone"
+                android:layout_marginTop="4dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <!-- Permalink row shown on completion -->
+            <LinearLayout android:id="@+id/overlayLinkRow"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:visibility="gone"
+                android:layout_marginTop="16dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <TextView android:id="@+id/overlayLinkText"
+                    android:textColor="#6C63FF"
+                    android:textSize="13sp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+
+                <Button android:id="@+id/overlayCopyBtn"
+                    android:text="@string/copy_seed"
+                    android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
+                    android:layout_marginStart="8dp"
+                    android:minWidth="0dp" android:paddingHorizontal="12dp"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            </LinearLayout>
+
+            <!-- Dismiss button shown on completion -->
+            <Button android:id="@+id/overlayDismissBtn"
+                android:text="@string/overlay_dismiss"
+                android:backgroundTint="#6C63FF" android:textColor="@android:color/white"
+                android:textStyle="bold"
+                android:visibility="gone"
+                android:layout_marginTop="24dp"
+                android:paddingHorizontal="32dp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+
+        </LinearLayout>
+    </FrameLayout>
+
+</FrameLayout>

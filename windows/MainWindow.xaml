@@ -110,34 +110,30 @@
 
             <TextBlock Grid.Column="0" Text="Preset:"
                        Foreground="{StaticResource TextBrush}" VerticalAlignment="Center"/>
-            <Grid Grid.Column="1">
-                <ComboBox x:Name="PresetCombo"
-                          Style="{StaticResource DarkComboBox}"
-                          ItemsSource="{Binding AllPresets}"
-                          SelectedItem="{Binding SelectedPreset, Mode=TwoWay}"
-                          DisplayMemberPath="Name"
-                          IsEnabled="{Binding IsSettingsEditable}"
-                          SelectionChanged="PresetCombo_SelectionChanged"/>
-                <TextBlock Text="Unsaved" IsHitTestVisible="False"
-                           VerticalAlignment="Center" Margin="6,0"
-                           FontStyle="Italic"
-                           Foreground="{StaticResource TextMutedBrush}"
-                           Visibility="{Binding IsPresetUnsaved, Converter={StaticResource BoolToVis}}"/>
-            </Grid>
+            <ComboBox Grid.Column="1" x:Name="PresetCombo"
+                      Style="{StaticResource DarkComboBox}"
+                      ItemsSource="{Binding AllPresets}"
+                      SelectedItem="{Binding SelectedPreset, Mode=TwoWay}"
+                      DisplayMemberPath="Name"
+                      IsEnabled="{Binding IsSettingsEditable}"
+                      SelectionChanged="PresetCombo_SelectionChanged"/>
 
             <TextBox   Grid.Column="2" x:Name="PresetNameBox" Width="140" Margin="6,0,0,0"
                        Style="{StaticResource DarkTextBox}"
                        Text="{Binding NewPresetName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                        IsEnabled="{Binding IsSettingsEditable}"
+                       Visibility="{Binding IsCustomSelected, Converter={StaticResource BoolToVis}}"
                        VerticalAlignment="Center"/>
 
             <Button    Grid.Column="3" Content="Save" Margin="4,0,0,0"
                        Style="{StaticResource DarkButton}"
-                       IsEnabled="{Binding IsSettingsEditable}"
+                       IsEnabled="{Binding CanSavePreset}"
+                       Visibility="{Binding IsCustomSelected, Converter={StaticResource BoolToVis}}"
                        Click="SavePreset_Click"/>
             <Button    Grid.Column="4" Content="Delete" Margin="4,0,0,0"
                        Style="{StaticResource DangerOutlineButton}"
                        IsEnabled="{Binding CanDeletePreset}"
+                       Visibility="{Binding IsUserPresetSelected, Converter={StaticResource BoolToVis}}"
                        Click="DeletePreset_Click"/>
         </Grid>
 

@@ -64,6 +64,10 @@ data class RandomizerPreset(
 
 object BuiltInPresets {
     val all = listOf(
+        RandomizerPreset("Vanilla", RandomizerSettings(
+            mode = "standard",
+            weapons = "vanilla",
+        )),
         RandomizerPreset("Quick Run", RandomizerSettings(
             goal = "fast_ganon", itemPlacement = "basic",
         )),
@@ -86,6 +90,8 @@ object BuiltInPresets {
         )),
     )
 }
+
+val CUSTOM_SENTINEL = RandomizerPreset("Custom", RandomizerSettings())
 
 // ── Dropdown option ────────────────────────────────────────────────────────────
 

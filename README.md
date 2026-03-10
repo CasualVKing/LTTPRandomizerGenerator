@@ -11,7 +11,7 @@ A utility that generates randomized *A Link to the Past* ROMs using the [alttpr.
 ### Randomizer Settings
 - All alttpr.com randomizer settings exposed as dropdowns
 - Named preset system — save your favourite settings with a custom name
-- 6 built-in presets: **Quick Run**, **Casual Boots**, **Keysanity**, **All Mix**, **Beginner**, **Swordless**
+- 7 built-in presets: **Vanilla**, **Quick Run**, **Casual Boots**, **Keysanity**, **All Mix**, **Beginner**, **Swordless**
 - Auto-saves last-used settings between sessions
 - Generates a shareable seed permalink
 
@@ -104,6 +104,7 @@ Manual sideload: download the APK, enable *Install from unknown sources* in Andr
 
 | Preset | Description |
 |--------|-------------|
+| Vanilla | Near-base-game experience — standard world state, vanilla weapons, no shuffles |
 | Quick Run | Fast Ganon, 7/7 crystals, basic placement |
 | Casual Boots | Open world, start with Pegasus Boots |
 | Keysanity | All dungeon items (maps, compasses, keys, big keys) can appear anywhere |

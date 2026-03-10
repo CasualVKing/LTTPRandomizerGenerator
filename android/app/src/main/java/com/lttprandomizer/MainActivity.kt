@@ -6,6 +6,8 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.widget.Toast
 import android.view.View
 import android.widget.*
@@ -231,14 +233,39 @@ class MainActivity : AppCompatActivity() {
         binding.presetSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
                 if (suppressPresetApply) return
-                applyPreset(allPresets[pos])
+                val preset = allPresets[pos]
+                val isCustom = (preset === CUSTOM_SENTINEL)
                 val isBuiltIn = pos < BuiltInPresets.all.size
-                binding.presetNameEdit.setText(if (isBuiltIn) "" else allPresets[pos].name)
-                binding.deletePresetBtn.isEnabled = !isBuiltIn
-                binding.unsavedText.visibility = View.GONE
+
+                if (isCustom) {
+                    binding.presetNameEdit.setText("")
+                    binding.presetNameEdit.visibility = View.VISIBLE
+                    binding.savePresetBtn.visibility = View.VISIBLE
+                    binding.savePresetBtn.isEnabled = false
+                    binding.deletePresetBtn.visibility = View.GONE
+                } else if (isBuiltIn) {
+                    applyPreset(preset)
+                    binding.presetNameEdit.visibility = View.GONE
+                    binding.savePresetBtn.visibility = View.GONE
+                    binding.deletePresetBtn.visibility = View.GONE
+                } else {
+                    applyPreset(preset)
+                    binding.presetNameEdit.visibility = View.GONE
+                    binding.savePresetBtn.visibility = View.GONE
+                    binding.deletePresetBtn.visibility = View.VISIBLE
+                    binding.deletePresetBtn.isEnabled = true
+                }
             }
             override fun onNothingSelected(p: AdapterView<*>?) {}
         }
+
+        binding.presetNameEdit.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                binding.savePresetBtn.isEnabled = s?.toString()?.trim()?.isNotEmpty() == true
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
 
         binding.savePresetBtn.setOnClickListener {
             val name = binding.presetNameEdit.text.toString().trim()
@@ -246,7 +273,16 @@ class MainActivity : AppCompatActivity() {
             if (err != null) showStatus(err, isError = true)
             else {
                 loadPresets()
-                tryMatchPreset()
+                val idx = allPresets.indexOfFirst { it.name == name }
+                if (idx >= 0) {
+                    suppressPresetApply = true
+                    binding.presetSpinner.setSelection(idx)
+                    suppressPresetApply = false
+                    binding.presetNameEdit.visibility = View.GONE
+                    binding.savePresetBtn.visibility = View.GONE
+                    binding.deletePresetBtn.visibility = View.VISIBLE
+                    binding.deletePresetBtn.isEnabled = true
+                }
                 showStatus("Preset \"$name\" saved.", isError = false)
             }
         }
@@ -260,7 +296,11 @@ class MainActivity : AppCompatActivity() {
                 .setPositiveButton("Delete") { _, _ ->
                     val err = PresetManager.deletePreset(this, name)
                     if (err != null) showStatus(err, isError = true)
-                    else { loadPresets(); showStatus("Deleted \"$name\".", isError = false) }
+                    else {
+                        loadPresets()
+                        tryMatchPreset()
+                        showStatus("Deleted \"$name\".", isError = false)
+                    }
                 }
                 .setNegativeButton("Cancel", null)
                 .show()
@@ -279,6 +319,15 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // Overlay buttons
+        binding.overlayDismissBtn.setOnClickListener { hideOverlay() }
+        binding.overlayCopyBtn.setOnClickListener { copySeedToClipboard() }
+        binding.overlayLinkText.setOnClickListener {
+            lastSeedPermalink?.let { url ->
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            }
+        }
+
         updateGenerateButton()
     }
 
@@ -288,7 +337,8 @@ class MainActivity : AppCompatActivity() {
         allPresets.clear()
         allPresets.addAll(BuiltInPresets.all)
         allPresets.addAll(PresetManager.loadUserPresets(this))
-        cachedPresetJsons = allPresets.map { AlttprApiClient.json.encodeToString(it.settings) }
+        allPresets.add(CUSTOM_SENTINEL)
+        cachedPresetJsons = allPresets.dropLast(1).map { AlttprApiClient.json.encodeToString(it.settings) }
         suppressPresetApply = true
         refreshPresetSpinner()
         suppressPresetApply = false
@@ -406,13 +456,18 @@ class MainActivity : AppCompatActivity() {
         suppressPresetApply = true
         if (matchIdx >= 0) {
             binding.presetSpinner.setSelection(matchIdx)
-            binding.unsavedText.visibility = View.GONE
             val isBuiltIn = matchIdx < BuiltInPresets.all.size
-            binding.presetNameEdit.setText(if (isBuiltIn) "" else allPresets[matchIdx].name)
+            binding.presetNameEdit.visibility = View.GONE
+            binding.savePresetBtn.visibility = View.GONE
+            binding.deletePresetBtn.visibility = if (isBuiltIn) View.GONE else View.VISIBLE
             binding.deletePresetBtn.isEnabled = !isBuiltIn
         } else {
-            binding.unsavedText.visibility = View.VISIBLE
-            binding.deletePresetBtn.isEnabled = false
+            binding.presetSpinner.setSelection(allPresets.size - 1)
+            binding.presetNameEdit.setText("")
+            binding.presetNameEdit.visibility = View.VISIBLE
+            binding.savePresetBtn.visibility = View.VISIBLE
+            binding.savePresetBtn.isEnabled = false
+            binding.deletePresetBtn.visibility = View.GONE
         }
         suppressPresetApply = false
     }
@@ -529,55 +584,72 @@ class MainActivity : AppCompatActivity() {
 
         PresetManager.saveCustomization(this, customization)
         setGenerating(true)
+        showOverlay()
         lastSeedPermalink = null
         binding.seedLinkRow.visibility = View.GONE
 
         lifecycleScope.launch {
             try {
+                updateOverlayStatus("Validating ROM…")
                 val (romErr, romBytes) = withContext(Dispatchers.IO) {
                     RomValidator.validate(this@MainActivity, rom)
                 }
-                if (romErr != null) { showStatus(romErr, isError = true); return@launch }
+                if (romErr != null) {
+                    hideOverlay()
+                    showStatus(romErr, isError = true)
+                    return@launch
+                }
 
                 val seed = if (fetchedSeed != null) {
                     if (fetchedSeed!!.bpsBytes.isEmpty() || fetchedSeed!!.dictPatches.isEmpty()) {
+                        hideOverlay()
                         showStatus("Seed data appears invalid or incomplete. Try reloading the seed.", isError = true)
                         return@launch
                     }
-                    showStatus("Using seed: ${fetchedSeed!!.hash}")
+                    updateOverlayStatus("Using seed: ${fetchedSeed!!.hash}")
                     fetchedSeed!!
                 } else {
                     val settings = currentSettings()
                     PresetManager.saveLastSettings(this@MainActivity, settings)
+                    updateOverlayStatus("Generating seed…")
                     withContext(Dispatchers.IO) {
-                        AlttprApiClient.generate(settings) { msg -> runOnUiThread { showStatus(msg) } }
+                        AlttprApiClient.generate(settings) { msg ->
+                            runOnUiThread { updateOverlayStatus(msg) }
+                        }
                     }
                 }
 
-                showStatus("Applying patches…")
+                updateOverlayStatus("Applying patches…")
                 val patchedRom = withContext(Dispatchers.IO) {
                     BpsPatcher.apply(romBytes, seed.bpsBytes, seed.dictPatches, seed.sizeMb)
                 }
 
-                showStatus("Applying cosmetics…")
+                updateOverlayStatus("Applying cosmetics…")
                 withContext(Dispatchers.IO) { CosmeticPatcher.apply(patchedRom, customization) }
 
                 if (customization.spritePath.isNotEmpty()) {
-                    showStatus("Applying sprite…")
+                    updateOverlayStatus("Applying sprite…")
                     val spriteErr = withContext(Dispatchers.IO) {
                         SpriteManager.resolveAndApply(this@MainActivity, customization.spritePath, patchedRom)
                     }
-                    if (spriteErr != null) { showStatus(spriteErr, isError = true); return@launch }
+                    if (spriteErr != null) {
+                        hideOverlay()
+                        showStatus(spriteErr, isError = true)
+                        return@launch
+                    }
                 }
 
-                showStatus("Writing output ROM…")
+                updateOverlayStatus("Writing output ROM…")
                 withContext(Dispatchers.IO) { writeOutput(output, seed.hash, seed.permalink, patchedRom) }
 
                 lastSeedPermalink = seed.permalink
                 binding.seedLinkText.text = seed.permalink
                 binding.seedLinkRow.visibility = View.VISIBLE
                 showStatus("Done! Seed: ${seed.hash}")
+
+                showOverlayComplete(seed.hash, seed.permalink)
             } catch (e: Exception) {
+                hideOverlay()
                 showStatus("Error: ${e.message}", isError = true)
             } finally {
                 setGenerating(false)
@@ -639,6 +711,39 @@ class MainActivity : AppCompatActivity() {
         binding.statusText.setTextColor(
             if (isError) 0xFFFF6B6B.toInt() else 0xFFB0B0CC.toInt()
         )
+    }
+
+    // ── Overlay helpers ──────────────────────────────────────────────────────
+
+    private fun showOverlay() {
+        binding.overlaySpinner.visibility = View.VISIBLE
+        binding.overlayCheckmark.visibility = View.GONE
+        binding.overlayStatus.text = ""
+        binding.overlaySeedHash.visibility = View.GONE
+        binding.overlayLinkRow.visibility = View.GONE
+        binding.overlayDismissBtn.visibility = View.GONE
+        binding.generatingOverlay.visibility = View.VISIBLE
+    }
+
+    private fun updateOverlayStatus(message: String) {
+        binding.overlayStatus.text = message
+    }
+
+    private fun showOverlayComplete(hash: String, permalink: String) {
+        binding.overlaySpinner.visibility = View.GONE
+        binding.overlayCheckmark.visibility = View.VISIBLE
+        binding.overlayStatus.text = "ROM Generated!"
+        binding.overlayStatus.setTextColor(0xFF4CAF50.toInt())
+        binding.overlaySeedHash.text = "Seed: $hash"
+        binding.overlaySeedHash.visibility = View.VISIBLE
+        binding.overlayLinkText.text = permalink
+        binding.overlayLinkRow.visibility = View.VISIBLE
+        binding.overlayDismissBtn.visibility = View.VISIBLE
+    }
+
+    private fun hideOverlay() {
+        binding.generatingOverlay.visibility = View.GONE
+        binding.overlayStatus.setTextColor(0xFFE0E0F0.toInt())
     }
 }
 

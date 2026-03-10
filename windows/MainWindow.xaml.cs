@@ -92,7 +92,7 @@ namespace LTTPRandomizerGenerator
         public string NewPresetName
         {
             get => _newPresetName;
-            set { _newPresetName = value; OnPropertyChanged(); }
+            set { _newPresetName = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanSavePreset)); }
         }
 
         public bool CanGenerate =>
@@ -146,11 +146,21 @@ namespace LTTPRandomizerGenerator
         public RandomizerPreset? SelectedPreset
         {
             get => _selectedPreset;
-            set { _selectedPreset = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanDeletePreset)); OnPropertyChanged(nameof(IsPresetUnsaved)); }
+            set
+            {
+                _selectedPreset = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsCustomSelected));
+                OnPropertyChanged(nameof(IsUserPresetSelected));
+                OnPropertyChanged(nameof(CanSavePreset));
+                OnPropertyChanged(nameof(CanDeletePreset));
+            }
         }
 
-        public bool CanDeletePreset => SelectedPreset is { IsBuiltIn: false };
-        public bool IsPresetUnsaved => SelectedPreset is null;
+        public bool IsCustomSelected => SelectedPreset?.IsCustomSentinel == true;
+        public bool IsUserPresetSelected => SelectedPreset is { IsBuiltIn: false, IsCustomSentinel: false };
+        public bool CanSavePreset => IsCustomSelected && !string.IsNullOrWhiteSpace(NewPresetName);
+        public bool CanDeletePreset => SelectedPreset is { IsBuiltIn: false, IsCustomSentinel: false };
 
         // ── Customization rows ────────────────────────────────────────────────
 
@@ -367,7 +377,7 @@ namespace LTTPRandomizerGenerator
             string currentJson = System.Text.Json.JsonSerializer.Serialize(CurrentSettings());
             int matchIdx = _cachedPresetJsons.IndexOf(currentJson);
             _suppressPresetApply = true;
-            SelectedPreset = matchIdx >= 0 ? AllPresets[matchIdx] : null;
+            SelectedPreset = matchIdx >= 0 ? AllPresets[matchIdx] : RandomizerPreset.CustomSentinel;
             _suppressPresetApply = false;
         }
 
@@ -380,8 +390,10 @@ namespace LTTPRandomizerGenerator
                 AllPresets.Add(p);
             foreach (var p in PresetManager.LoadUserPresets())
                 AllPresets.Add(p);
+            AllPresets.Add(RandomizerPreset.CustomSentinel);
 
             _cachedPresetJsons = AllPresets
+                .Where(p => !p.IsCustomSentinel)
                 .Select(p => System.Text.Json.JsonSerializer.Serialize(p.Settings))
                 .ToList();
 
@@ -442,6 +454,13 @@ namespace LTTPRandomizerGenerator
         private void PresetCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             if (_suppressPresetApply || SelectedPreset is null) return;
+
+            if (SelectedPreset.IsCustomSentinel)
+            {
+                NewPresetName = string.Empty;
+                return;
+            }
+
             _suppressPresetApply = true;
             ApplySettingsToRows(SelectedPreset.Settings);
             _suppressPresetApply = false;

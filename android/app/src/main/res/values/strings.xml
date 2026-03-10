@@ -18,8 +18,7 @@
     <string name="output_folder_label">Output Folder</string>
     <string name="sprite_section_label">SPRITE</string>
     <string name="preset_section_label">PRESET</string>
-    <string name="unsaved_label">Unsaved</string>
-    <string name="customization_toggle_collapsed">▶ CUSTOMIZATION</string>
+<string name="customization_toggle_collapsed">▶ CUSTOMIZATION</string>
     <string name="customization_toggle_expanded">▲ CUSTOMIZATION</string>
     <string name="settings_toggle_collapsed">▶ RANDOMIZER SETTINGS</string>
     <string name="settings_toggle_expanded">▲ RANDOMIZER SETTINGS</string>
@@ -49,6 +48,9 @@
 
     <!-- Output hint -->
     <string name="output_hint">ROMs are saved to a lttpr/ subfolder. Place it in your emulator\'s SNES ROMs directory.</string>
+
+    <!-- Generation overlay -->
+    <string name="overlay_dismiss">Done</string>
 
     <!-- Seed input -->
     <string name="seed_label">Seed (optional)</string>
