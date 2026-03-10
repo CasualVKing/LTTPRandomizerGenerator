@@ -140,7 +140,7 @@
                                                   Content="{TemplateBinding SelectionBoxItem}"
                                                   ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                                   VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="▾"
+                                <TextBlock x:Name="Arrow" Grid.Column="1" Text="▾"
                                            Foreground="{StaticResource TextMutedBrush}"
                                            FontSize="10"
                                            VerticalAlignment="Center"
@@ -170,6 +170,12 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Border" Property="Background" Value="#111118"/>
+                            <Setter TargetName="Border" Property="Opacity" Value="0.5"/>
+                            <Setter Property="Foreground" Value="#555568"/>
+                            <Setter TargetName="Arrow" Property="Visibility" Value="Collapsed"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

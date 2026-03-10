@@ -100,6 +100,35 @@ namespace LTTPRandomizerGenerator
             !string.IsNullOrWhiteSpace(RomPath) &&
             !string.IsNullOrWhiteSpace(OutputFolder);
 
+        // ── Seed input state ────────────────────────────────────────────────
+
+        private string _seedInput = string.Empty;
+        public string SeedInput
+        {
+            get => _seedInput;
+            set { _seedInput = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanLoadSeed)); }
+        }
+
+        private string _seedHash = string.Empty;
+        public string SeedHash
+        {
+            get => _seedHash;
+            set
+            {
+                _seedHash = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasSeedHash));
+                OnPropertyChanged(nameof(IsSettingsEditable));
+                OnPropertyChanged(nameof(CanLoadSeed));
+            }
+        }
+
+        public bool HasSeedHash => !string.IsNullOrWhiteSpace(_seedHash);
+        public bool IsSettingsEditable => !HasSeedHash;
+        public bool CanLoadSeed => !string.IsNullOrWhiteSpace(SeedInput) && !IsGenerating && !HasSeedHash;
+
+        private FetchedSeed? _fetchedSeed;
+
         private bool _isSettingsExpanded = false;
         public bool IsSettingsExpanded
         {
@@ -481,6 +510,74 @@ namespace LTTPRandomizerGenerator
             ShowStatus($"Preset \"{name}\" deleted.", isError: false);
         }
 
+        // ── Seed input handlers ──────────────────────────────────────────────
+
+        private async void LoadSeed_Click(object sender, RoutedEventArgs e)
+        {
+            string? hash = AlttprApiClient.ParseSeedHash(SeedInput);
+            if (hash is null)
+            {
+                ShowStatus("Invalid seed hash. Enter a hash (e.g. ABC123) or URL (e.g. https://alttpr.com/h/ABC123).", isError: true);
+                return;
+            }
+
+            IsGenerating = true;
+            _cts = new CancellationTokenSource();
+            try
+            {
+                var progress = new Progress<string>(msg => ShowStatus(msg, isError: false));
+                var fetched = await AlttprApiClient.FetchSeedAsync(hash, progress, _cts.Token);
+                if (fetched is null) { ShowStatus("Failed to load seed.", isError: true); return; }
+
+                _fetchedSeed = fetched;
+                SeedHash = hash;
+
+                // Apply and lock settings
+                if (fetched.Settings is not null)
+                {
+                    _suppressPresetApply = true;
+                    ApplySettingsToRows(fetched.Settings);
+                    _suppressPresetApply = false;
+                }
+                foreach (var row in SettingRows)
+                    row.IsEnabled = false;
+
+                SeedPermalink = fetched.Seed.Permalink;
+                ShowStatus($"Seed loaded: {hash}", isError: false);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                ShowStatus("Seed not found. Check the hash and try again.", isError: true);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("timed out", StringComparison.OrdinalIgnoreCase))
+            {
+                ShowStatus("Request timed out. Check your internet connection and try again.", isError: true);
+            }
+            catch (Exception ex)
+            {
+                ShowStatus($"Error loading seed: {ex.Message}", isError: true);
+            }
+            finally
+            {
+                IsGenerating = false;
+                _cts?.Dispose();
+                _cts = null;
+            }
+        }
+
+        private void ClearSeed_Click(object sender, RoutedEventArgs e)
+        {
+            _fetchedSeed = null;
+            SeedHash = string.Empty;
+            SeedInput = string.Empty;
+            SeedPermalink = string.Empty;
+
+            foreach (var row in SettingRows)
+                row.IsEnabled = true;
+
+            ShowStatus("Seed cleared. You can now generate with custom settings.", isError: false);
+        }
+
         private CancellationTokenSource? _cts;
 
         private async void Generate_Click(object sender, RoutedEventArgs e)
@@ -491,18 +588,32 @@ namespace LTTPRandomizerGenerator
 
             try
             {
-                var settings = CurrentSettings();
-                PresetManager.SaveLastSettings(settings);
-
-                string boots = settings.Pseudoboots ? "Boots" : "No Boots";
-                ShowStatus($"Sending: {settings.Mode} | {settings.Goal} | {boots}", isError: false);
-
                 string? romErr = RomValidator.Validate(RomPath, out byte[] romBytes);
                 if (romErr is not null) { ShowStatus(romErr, isError: true); return; }
 
-                var progress = new Progress<string>(msg => ShowStatus(msg, isError: false));
-                var seed = await AlttprApiClient.GenerateAsync(settings, progress, _cts.Token);
-                if (seed is null) { ShowStatus("Generation failed: no response from API.", isError: true); return; }
+                SeedResult? seed;
+                if (_fetchedSeed is not null)
+                {
+                    seed = _fetchedSeed.Seed;
+                    if (seed.BpsPatchBytes.Length == 0 || seed.DictionaryPatches is null || seed.DictionaryPatches.Count == 0)
+                    {
+                        ShowStatus("Seed data appears invalid or incomplete. Try reloading the seed.", isError: true);
+                        return;
+                    }
+                    ShowStatus($"Using seed: {seed.Hash}", isError: false);
+                }
+                else
+                {
+                    var settings = CurrentSettings();
+                    PresetManager.SaveLastSettings(settings);
+
+                    string boots = settings.Pseudoboots ? "Boots" : "No Boots";
+                    ShowStatus($"Sending: {settings.Mode} | {settings.Goal} | {boots}", isError: false);
+
+                    var progress = new Progress<string>(msg => ShowStatus(msg, isError: false));
+                    seed = await AlttprApiClient.GenerateAsync(settings, progress, _cts.Token);
+                    if (seed is null) { ShowStatus("Generation failed: no response from API.", isError: true); return; }
+                }
 
                 ShowStatus("Applying patches...", isError: false);
                 var customization = CurrentCustomization();
@@ -534,8 +645,7 @@ namespace LTTPRandomizerGenerator
                 }
 
                 SeedPermalink = seed.Permalink;
-                ShowStatus($"Done! Saved to: {outFile}", isError: false);
-                ShowStatus($"Seed hash: {seed.Hash}   |   {SeedPermalink}", isError: false);
+                ShowStatus($"Done! Seed: {seed.Hash}  —  saved to {Path.GetFileName(outFile)}", isError: false);
             }
             catch (OperationCanceledException)
             {
@@ -626,6 +736,15 @@ namespace LTTPRandomizerGenerator
                 Process.Start(new ProcessStartInfo(SeedPermalink) { UseShellExecute = true });
         }
 
+        private void CopySeed_Click(object sender, RoutedEventArgs e)
+        {
+            if (!string.IsNullOrEmpty(SeedPermalink))
+            {
+                Clipboard.SetText(SeedPermalink);
+                ShowStatus("Permalink copied to clipboard.", isError: false);
+            }
+        }
+
         private void ShowStatus(string message, bool isError)
         {
             StatusMessage = message;
@@ -654,6 +773,13 @@ namespace LTTPRandomizerGenerator
         {
             get => _selectedOption;
             set { _selectedOption = value; OnPropertyChanged(); }
+        }
+
+        private bool _isEnabled = true;
+        public bool IsEnabled
+        {
+            get => _isEnabled;
+            set { _isEnabled = value; OnPropertyChanged(); }
         }
 
         public SettingRow(string fieldKey, string label, DropdownOption[] options)

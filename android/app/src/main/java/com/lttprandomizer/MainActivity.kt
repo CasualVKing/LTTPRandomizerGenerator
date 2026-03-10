@@ -1,6 +1,8 @@
 package com.lttprandomizer
 
 import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -43,6 +45,10 @@ class MainActivity : AppCompatActivity() {
     // Panel collapse state (collapsed by default)
     private var settingsExpanded = false
     private var customizationExpanded = false
+
+    // Seed input state (for racing — fetch an existing seed by hash)
+    private var seedHash: String = ""
+    private var fetchedSeed: AlttprApiClient.SeedResult? = null
 
     // ── File pickers ─────────────────────────────────────────────────────────
 
@@ -260,6 +266,11 @@ class MainActivity : AppCompatActivity() {
                 .show()
         }
 
+        // Seed input
+        binding.loadSeedBtn.setOnClickListener { loadSeed() }
+        binding.clearSeedBtn.setOnClickListener { clearSeed() }
+        binding.copySeedBtn.setOnClickListener { copySeedToClipboard() }
+
         // Generate
         binding.generateBtn.setOnClickListener { generate() }
         binding.seedLinkText.setOnClickListener {
@@ -433,19 +444,93 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    // ── Seed input ──────────────────────────────────────────────────────────────
+
+    private fun loadSeed() {
+        val input = binding.seedInputEdit.text.toString()
+        val hash = AlttprApiClient.parseSeedHash(input)
+        if (hash == null) {
+            showStatus("Invalid seed. Enter a hash (e.g. AbC12xY) or full URL (e.g. https://alttpr.com/h/AbC12xY).", isError = true)
+            return
+        }
+
+        setGenerating(true)
+        lifecycleScope.launch {
+            try {
+                val fetched = withContext(Dispatchers.IO) {
+                    AlttprApiClient.fetchSeed(hash) { msg -> runOnUiThread { showStatus(msg) } }
+                }
+
+                fetchedSeed = fetched.seed
+                seedHash = hash
+
+                if (fetched.settings != null) {
+                    suppressPresetApply = true
+                    applySettings(fetched.settings)
+                    suppressPresetApply = false
+                }
+                setSeedMode(locked = true)
+
+                lastSeedPermalink = fetched.seed.permalink
+                binding.seedLinkText.text = fetched.seed.permalink
+                binding.seedLinkRow.visibility = View.VISIBLE
+                showStatus("Seed loaded: $hash")
+            } catch (e: Exception) {
+                val msg = e.message ?: "Unknown error"
+                if (msg.contains("not found", ignoreCase = true)) {
+                    showStatus("Seed not found. Check the hash and try again.", isError = true)
+                } else if (msg.contains("timed out", ignoreCase = true)) {
+                    showStatus("Request timed out. Check your internet connection and try again.", isError = true)
+                } else {
+                    showStatus("Error loading seed: $msg", isError = true)
+                }
+            } finally {
+                setGenerating(false)
+            }
+        }
+    }
+
+    private fun clearSeed() {
+        fetchedSeed = null
+        seedHash = ""
+        binding.seedInputEdit.setText("")
+        lastSeedPermalink = null
+        binding.seedLinkRow.visibility = View.GONE
+        setSeedMode(locked = false)
+        showStatus("Seed cleared. You can now generate with custom settings.")
+    }
+
+    private fun copySeedToClipboard() {
+        val link = lastSeedPermalink ?: return
+        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("seed", link))
+        Toast.makeText(this, "Copied!", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun setSeedMode(locked: Boolean) {
+        for (row in settingRows) {
+            row.spinnerRef?.isEnabled = !locked
+            row.spinnerRef?.alpha = if (locked) 0.4f else 1.0f
+        }
+        binding.presetSpinner.isEnabled = !locked
+        binding.presetNameEdit.isEnabled = !locked
+        binding.savePresetBtn.isEnabled = !locked
+        binding.clearSeedBtn.visibility = if (locked) View.VISIBLE else View.GONE
+        binding.loadSeedBtn.isEnabled = !locked
+        binding.seedInputEdit.isEnabled = !locked
+    }
+
     // ── Generate ──────────────────────────────────────────────────────────────
 
     private fun generate() {
         val rom = romUri ?: return
         val output = outputUri ?: return
-        val settings = currentSettings()
         val customization = currentCustomization()
 
-        PresetManager.saveLastSettings(this, settings)
         PresetManager.saveCustomization(this, customization)
         setGenerating(true)
         lastSeedPermalink = null
-        binding.seedLinkText.visibility = View.GONE
+        binding.seedLinkRow.visibility = View.GONE
 
         lifecycleScope.launch {
             try {
@@ -454,8 +539,19 @@ class MainActivity : AppCompatActivity() {
                 }
                 if (romErr != null) { showStatus(romErr, isError = true); return@launch }
 
-                val seed = withContext(Dispatchers.IO) {
-                    AlttprApiClient.generate(settings) { msg -> runOnUiThread { showStatus(msg) } }
+                val seed = if (fetchedSeed != null) {
+                    if (fetchedSeed!!.bpsBytes.isEmpty() || fetchedSeed!!.dictPatches.isEmpty()) {
+                        showStatus("Seed data appears invalid or incomplete. Try reloading the seed.", isError = true)
+                        return@launch
+                    }
+                    showStatus("Using seed: ${fetchedSeed!!.hash}")
+                    fetchedSeed!!
+                } else {
+                    val settings = currentSettings()
+                    PresetManager.saveLastSettings(this@MainActivity, settings)
+                    withContext(Dispatchers.IO) {
+                        AlttprApiClient.generate(settings) { msg -> runOnUiThread { showStatus(msg) } }
+                    }
                 }
 
                 showStatus("Applying patches…")
@@ -479,7 +575,7 @@ class MainActivity : AppCompatActivity() {
 
                 lastSeedPermalink = seed.permalink
                 binding.seedLinkText.text = seed.permalink
-                binding.seedLinkText.visibility = View.VISIBLE
+                binding.seedLinkRow.visibility = View.VISIBLE
                 showStatus("Done! Seed: ${seed.hash}")
             } catch (e: Exception) {
                 showStatus("Error: ${e.message}", isError = true)

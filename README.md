@@ -15,6 +15,12 @@ A utility that generates randomized *A Link to the Past* ROMs using the [alttpr.
 - Auto-saves last-used settings between sessions
 - Generates a shareable seed permalink
 
+### Seed Input (Racing)
+- Enter a seed hash or full alttpr.com permalink to use an existing seed
+- Settings auto-populate and lock to read-only; cosmetics and sprites remain editable
+- Copy button for easy seed sharing after generation
+- Clear (✕) to return to normal generation mode
+
 ### Cosmetic Customization
 - **Heart Beep Speed** — Off, Quarter, Half, Normal, Double
 - **Heart Color** — Red, Blue, Green, Yellow
@@ -31,19 +37,11 @@ A utility that generates randomized *A Link to the Past* ROMs using the [alttpr.
 - Selecting Default (Link) resets to the original sprite
 - Android: scrollable header with floating Cancel and scroll-to-top buttons for small screens
 
-### ES-DE Integration
-- **ES-DE Mode** checkbox on both platforms
-- When enabled, ROMs are output to a `lttpr/` subfolder with a datetime-stamped filename
-- Automatically generates and updates `gamelist.xml` with seed metadata (name, permalink, genre)
-- Writes `_info.txt` with instructions for adding `lttpr` as a custom system in ES-DE
-- The custom system uses `platform: snes` so ES-DE picks the correct emulator and theme
-- Compatible with [ES-DE](https://es-de.org), [RetroBat](https://www.retrobat.org), and other EmulationStation forks
-
 ### General
 - Full feature parity across Windows and Android
 - Self-contained — no Python, PHP, or other runtimes required
 - ROM path and output folder remembered across sessions
-- ES-DE mode preference persisted across sessions
+- Seed permalink copy button for easy sharing
 - Your ROM is never sent to any server
 
 ---
@@ -71,12 +69,12 @@ Manual sideload: download the APK, enable *Install from unknown sources* in Andr
 
 1. **Select your base ROM** — the Japanese v1.0 ALttP ROM (`.sfc`, `.smc`, or `.rom`)
 2. **Select an output folder** where the randomized ROM will be saved
-3. *(Optional)* Check **ES-DE Mode** to output ROMs into a `lttpr/` subfolder with metadata for EmulationStation
+3. *(Optional)* **Load an existing seed** — paste a hash or alttpr.com URL and click **Load** to use someone else's seed (settings lock automatically)
 4. **Pick a preset** or configure settings manually using the dropdowns
 5. *(Optional)* Change cosmetics under **CUSTOMIZATION**, or pick a sprite from the **SPRITE** section
 6. Hit **Generate ROM**
 7. The app contacts alttpr.com, downloads the seed patch, applies it locally, and writes the output ROM
-8. A shareable seed permalink is shown — click it to open the seed page on alttpr.com
+8. A shareable seed permalink is shown — click **Copy** to share, or click the link to open the seed page
 
 ---
 

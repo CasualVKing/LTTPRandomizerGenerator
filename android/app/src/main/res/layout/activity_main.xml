@@ -70,6 +70,30 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
 
+        <!-- Seed input (optional, for racing) -->
+        <TextView android:text="@string/seed_label" android:textColor="#888899"
+            android:layout_marginTop="12dp"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        <LinearLayout android:orientation="horizontal" android:layout_marginTop="4dp"
+            android:layout_width="match_parent" android:layout_height="wrap_content">
+            <EditText android:id="@+id/seedInputEdit"
+                android:hint="@string/seed_hint" android:textColor="#E0E0F0"
+                android:textColorHint="#555568" android:background="#2A2A3E"
+                android:padding="8dp" android:layout_weight="1"
+                android:inputType="text" android:maxLines="1"
+                android:layout_width="0dp" android:layout_height="wrap_content"/>
+            <Button android:id="@+id/loadSeedBtn" android:text="@string/load_seed"
+                android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
+                android:layout_marginStart="8dp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <Button android:id="@+id/clearSeedBtn" android:text="✕"
+                android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
+                android:visibility="gone"
+                android:layout_marginStart="4dp"
+                android:minWidth="0dp" android:paddingHorizontal="12dp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        </LinearLayout>
+
         <!-- Divider -->
         <View android:background="#3A3A55" android:layout_marginVertical="16dp"
             android:layout_width="match_parent" android:layout_height="1dp"/>
@@ -172,11 +196,19 @@
         <TextView android:id="@+id/statusText"
             android:textColor="#B0B0CC" android:layout_marginTop="8dp"
             android:layout_width="match_parent" android:layout_height="wrap_content"/>
-        <TextView android:id="@+id/seedLinkText"
-            android:textColor="#6C63FF" android:visibility="gone"
-
-            android:layout_marginTop="4dp"
-            android:layout_width="match_parent" android:layout_height="wrap_content"/>
+        <LinearLayout android:orientation="horizontal" android:layout_marginTop="4dp"
+            android:id="@+id/seedLinkRow" android:visibility="gone"
+            android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:id="@+id/seedLinkText"
+                android:textColor="#6C63FF"
+                android:layout_weight="1"
+                android:layout_width="0dp" android:layout_height="wrap_content"/>
+            <Button android:id="@+id/copySeedBtn" android:text="@string/copy_seed"
+                android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
+                android:layout_marginStart="8dp"
+                android:minWidth="0dp" android:paddingHorizontal="12dp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        </LinearLayout>
 
     </LinearLayout>
 </ScrollView>

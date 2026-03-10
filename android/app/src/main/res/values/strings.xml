@@ -49,4 +49,11 @@
 
     <!-- Output hint -->
     <string name="output_hint">ROMs are saved to a lttpr/ subfolder. Place it in your emulator\'s SNES ROMs directory.</string>
+
+    <!-- Seed input -->
+    <string name="seed_label">Seed (optional)</string>
+    <string name="seed_hint">Hash or URL…</string>
+    <string name="load_seed">Load</string>
+    <string name="clear_seed">Clear</string>
+    <string name="copy_seed">Copy</string>
 </resources>

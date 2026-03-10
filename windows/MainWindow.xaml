@@ -41,7 +41,9 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="8"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="6"/>
+                <RowDefinition Height="2"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="8"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
@@ -74,6 +76,24 @@
                        Text="ROMs are saved to a lttpr\ subfolder. Place it in your emulator's SNES ROMs directory."
                        Foreground="{StaticResource TextMutedBrush}"
                        FontSize="11" Margin="0,2,0,0"/>
+
+            <!-- Seed input (optional, for racing) -->
+            <TextBlock Grid.Row="6" Grid.Column="0" Text="Seed (optional):"
+                       Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+            <TextBox   Grid.Row="6" Grid.Column="1"
+                       Style="{StaticResource DarkTextBox}"
+                       Text="{Binding SeedInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                       VerticalAlignment="Center"/>
+            <StackPanel Grid.Row="6" Grid.Column="2" Orientation="Horizontal">
+                <Button Content="Load" Margin="6,0,0,0"
+                        Style="{StaticResource DarkButton}"
+                        IsEnabled="{Binding CanLoadSeed}"
+                        Click="LoadSeed_Click"/>
+                <Button Content="✕" Margin="4,0,0,0"
+                        Style="{StaticResource DarkButton}"
+                        Visibility="{Binding HasSeedHash, Converter={StaticResource BoolToVis}}"
+                        Click="ClearSeed_Click"/>
+            </StackPanel>
         </Grid>
 
         <Separator Grid.Row="2" Margin="0,10"/>
@@ -96,6 +116,7 @@
                           ItemsSource="{Binding AllPresets}"
                           SelectedItem="{Binding SelectedPreset, Mode=TwoWay}"
                           DisplayMemberPath="Name"
+                          IsEnabled="{Binding IsSettingsEditable}"
                           SelectionChanged="PresetCombo_SelectionChanged"/>
                 <TextBlock Text="Unsaved" IsHitTestVisible="False"
                            VerticalAlignment="Center" Margin="6,0"
@@ -107,10 +128,12 @@
             <TextBox   Grid.Column="2" x:Name="PresetNameBox" Width="140" Margin="6,0,0,0"
                        Style="{StaticResource DarkTextBox}"
                        Text="{Binding NewPresetName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                       IsEnabled="{Binding IsSettingsEditable}"
                        VerticalAlignment="Center"/>
 
             <Button    Grid.Column="3" Content="Save" Margin="4,0,0,0"
                        Style="{StaticResource DarkButton}"
+                       IsEnabled="{Binding IsSettingsEditable}"
                        Click="SavePreset_Click"/>
             <Button    Grid.Column="4" Content="Delete" Margin="4,0,0,0"
                        Style="{StaticResource DangerOutlineButton}"
@@ -250,7 +273,8 @@
                                            Style="{StaticResource DarkComboBox}"
                                            ItemsSource="{Binding Options}"
                                            SelectedItem="{Binding SelectedOption, Mode=TwoWay}"
-                                           DisplayMemberPath="Display"/>
+                                           DisplayMemberPath="Display"
+                                           IsEnabled="{Binding IsEnabled}"/>
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -274,12 +298,16 @@
             <TextBlock Text="{Binding StatusMessage}"
                        Foreground="{Binding StatusColor}"
                        Margin="0,6,0,0" TextWrapping="Wrap"/>
-            <TextBlock Text="{Binding SeedPermalink}"
-                       Foreground="{StaticResource AccentBrush}"
-                       TextDecorations="Underline" Cursor="Hand"
-                       Visibility="{Binding HasSeedLink, Converter={StaticResource BoolToVis}}"
-                       MouseLeftButtonUp="SeedLink_Click"
-                       Margin="0,2,0,0"/>
+            <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
+                        Visibility="{Binding HasSeedLink, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="{Binding SeedPermalink}"
+                           Foreground="{StaticResource AccentBrush}"
+                           TextDecorations="Underline" Cursor="Hand"
+                           MouseLeftButtonUp="SeedLink_Click"/>
+                <Button Content="Copy" Margin="8,0,0,0"
+                        Style="{StaticResource DarkButton}"
+                        Click="CopySeed_Click" FontSize="11" Padding="6,2"/>
+            </StackPanel>
         </StackPanel>
     </Grid>
 </Window>
