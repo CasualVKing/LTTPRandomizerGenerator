@@ -87,6 +87,15 @@ object PresetManager {
         prefs(context).edit().putString(KEY_LAST_CUSTOMIZATION, json.encodeToString(c)).apply()
     }
 
+    private const val KEY_MSU_SETTINGS = "msu_settings"
+
+    fun loadMsuSettings(context: Context): MsuSettings =
+        decodeOrDefault(prefs(context).getString(KEY_MSU_SETTINGS, null), MsuSettings())
+
+    fun saveMsuSettings(context: Context, s: MsuSettings) {
+        prefs(context).edit().putString(KEY_MSU_SETTINGS, json.encodeToString(s)).apply()
+    }
+
     fun saveFavorites(context: Context, favorites: Set<String>) {
         prefs(context).edit().putStringSet(KEY_SPRITE_FAVORITES, favorites).apply()
     }

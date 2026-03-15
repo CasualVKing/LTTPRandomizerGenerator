@@ -29,6 +29,8 @@ namespace LTTPRandomizerGenerator
             RestoreLastSettings();
             BuildCustomizationRows();
             RestoreCustomization();
+            InitMsuTracks();
+            RestoreMsuSettings();
             _initialized = true;
             TryMatchPreset();
 
@@ -174,6 +176,46 @@ namespace LTTPRandomizerGenerator
         }
 
         public string CustomizationToggleLabel => IsCustomizationExpanded ? "▲ CUSTOMIZATION" : "▶ CUSTOMIZATION";
+
+        // ── MSU Music Pack ───────────────────────────────────────────────────
+
+        private readonly MsuAudioPlayer _audioPlayer = new();
+        public ObservableCollection<MsuTrackSlot> MsuTracks { get; } = new();
+
+        private bool _isMsuExpanded = false;
+        public bool IsMsuExpanded
+        {
+            get => _isMsuExpanded;
+            set { _isMsuExpanded = value; OnPropertyChanged(); OnPropertyChanged(nameof(MsuToggleLabel)); }
+        }
+
+        public string MsuToggleLabel => IsMsuExpanded ? "▲ MUSIC PACK" : "▶ MUSIC PACK";
+
+        private bool _includeMsuPack;
+        public bool IncludeMsuPack
+        {
+            get => _includeMsuPack;
+            set { _includeMsuPack = value; OnPropertyChanged(); }
+        }
+
+        private string _msuPackName = string.Empty;
+        public string MsuPackName
+        {
+            get => _msuPackName;
+            set { _msuPackName = value; OnPropertyChanged(); OnPropertyChanged(nameof(MsuPackSummary)); }
+        }
+
+        public bool HasMsuPack => MsuTracks.Any(t => t.HasFile);
+        public string MsuPackSummary => HasMsuPack
+            ? $"{MsuPackName} — {MsuTracks.Count(t => t.HasFile)} of {MsuTracks.Count} tracks assigned"
+            : string.Empty;
+
+        private void RefreshMsuState()
+        {
+            OnPropertyChanged(nameof(HasMsuPack));
+            OnPropertyChanged(nameof(MsuPackSummary));
+            if (_initialized) SaveMsuSettings();
+        }
 
         // ── Sprite selection ──────────────────────────────────────────────────
 
@@ -663,8 +705,20 @@ namespace LTTPRandomizerGenerator
                     if (spriteErr is not null) { ShowStatus($"Sprite error: {spriteErr}", isError: true); return; }
                 }
 
+                // MSU music pack
+                if (IncludeMsuPack && HasMsuPack)
+                {
+                    ShowStatus("Writing MSU music pack...", isError: false);
+                    var activeTracks = MsuTracks
+                        .Where(t => t.PcmPath != null)
+                        .ToDictionary(t => t.SlotNumber.ToString(), t => t.PcmPath!);
+                    var msuErr = await Task.Run(() => MsuPackApplier.Apply(outFile, activeTracks), _cts.Token);
+                    if (msuErr is not null) { ShowStatus($"MSU error: {msuErr}", isError: true); return; }
+                }
+
                 SeedPermalink = seed.Permalink;
-                ShowStatus($"Done! Seed: {seed.Hash}  —  saved to {Path.GetFileName(outFile)}", isError: false);
+                var msuNote = (IncludeMsuPack && HasMsuPack) ? " + MSU" : "";
+                ShowStatus($"Done! Seed: {seed.Hash}  —  saved to {Path.GetFileName(outFile)}{msuNote}", isError: false);
             }
             catch (OperationCanceledException)
             {
@@ -762,6 +816,243 @@ namespace LTTPRandomizerGenerator
                 Clipboard.SetText(SeedPermalink);
                 ShowStatus("Permalink copied to clipboard.", isError: false);
             }
+        }
+
+        // ── MSU Music Pack handlers ──────────────────────────────────────────
+
+        private void InitMsuTracks()
+        {
+            foreach (var slot in MsuTrackCatalog.Load())
+                MsuTracks.Add(slot);
+            MsuOriginalSoundtrack.LoadCachedOriginals(MsuTracks.ToList());
+        }
+
+        private void RestoreMsuSettings()
+        {
+            var settings = MsuSettingsManager.Load();
+            if (settings.Tracks.Count > 0)
+            {
+                var playlist = new MsuPlaylist { Name = settings.PackName, Tracks = settings.Tracks };
+                ApplyPlaylistToTracks(playlist);
+                IncludeMsuPack = settings.IncludeMsu;
+            }
+        }
+
+        private void SaveMsuSettings()
+        {
+            var settings = new MsuSettings
+            {
+                IncludeMsu = IncludeMsuPack,
+                PackName = MsuPackName,
+                Tracks = MsuTracks.Where(t => t.HasFile)
+                    .ToDictionary(t => t.SlotNumber.ToString(), t => t.PcmPath!)
+            };
+            MsuSettingsManager.Save(settings);
+        }
+
+        private void ToggleMsu_Click(object sender, MouseButtonEventArgs e)
+            => IsMsuExpanded = !IsMsuExpanded;
+
+        private void ImportLttppack_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new OpenFileDialog
+            {
+                Filter = "Music Pack (*.lttppack)|*.lttppack|ZIP files (*.zip)|*.zip",
+                Title = "Import MSU Music Pack"
+            };
+            if (dlg.ShowDialog() != true) return;
+
+            var (playlist, error) = MsuPackImporter.Import(dlg.FileName);
+            if (error is not null) { ShowStatus(error, isError: true); return; }
+
+            ApplyPlaylistToTracks(playlist!);
+            ShowStatus($"Imported pack: {playlist!.Name} ({playlist.Tracks.Count} tracks)", isError: false);
+        }
+
+        private async void ImportOstFolder_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new System.Windows.Forms.FolderBrowserDialog
+            {
+                Description = "Select folder containing original soundtrack audio files"
+            };
+            if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+
+            MsuProgressText.Visibility = Visibility.Visible;
+            var progress = new Progress<(int current, int total, string trackName)>(p =>
+            {
+                MsuProgressText.Text = $"Converting {p.current}/{p.total}: {p.trackName}...";
+            });
+
+            var result = await MsuOriginalSoundtrack.ImportFromFolderAsync(dlg.SelectedPath, MsuTracks.ToList(), progress);
+            MsuProgressText.Visibility = Visibility.Collapsed;
+
+            if (result is not null)
+                ShowStatus(result, isError: result.Contains("failed", StringComparison.OrdinalIgnoreCase));
+            else
+                ShowStatus("Original soundtrack imported successfully.", isError: false);
+            RefreshMsuState();
+        }
+
+        private async void ImportOstZip_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new OpenFileDialog
+            {
+                Filter = "ZIP files (*.zip)|*.zip",
+                Title = "Import Original Soundtrack ZIP"
+            };
+            if (dlg.ShowDialog() != true) return;
+
+            MsuProgressText.Visibility = Visibility.Visible;
+            var progress = new Progress<(int current, int total, string trackName)>(p =>
+            {
+                MsuProgressText.Text = $"Converting {p.current}/{p.total}: {p.trackName}...";
+            });
+
+            var result = await MsuOriginalSoundtrack.ImportFromZipAsync(dlg.FileName, MsuTracks.ToList(), progress);
+            MsuProgressText.Visibility = Visibility.Collapsed;
+
+            if (result is not null)
+                ShowStatus(result, isError: result.Contains("failed", StringComparison.OrdinalIgnoreCase));
+            else
+                ShowStatus("Original soundtrack imported successfully.", isError: false);
+            RefreshMsuState();
+        }
+
+        private void ExportPack_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new SaveFileDialog
+            {
+                Filter = "Music Pack (*.lttppack)|*.lttppack",
+                FileName = string.IsNullOrEmpty(MsuPackName) ? "my-msu-pack" : MsuPackName
+            };
+            if (dlg.ShowDialog() != true) return;
+
+            var playlist = new MsuPlaylist
+            {
+                Name = Path.GetFileNameWithoutExtension(dlg.FileName),
+                Tracks = MsuTracks.Where(t => t.HasFile)
+                    .ToDictionary(t => t.SlotNumber.ToString(), t => t.PcmPath!)
+            };
+
+            var (result, error) = MsuPackImporter.Export(dlg.FileName, playlist);
+            if (error is not null)
+                ShowStatus(error, isError: true);
+            else
+                ShowStatus($"Exported {result!.TracksWritten} tracks to {Path.GetFileName(dlg.FileName)}", isError: false);
+        }
+
+        private void ClearPack_Click(object sender, RoutedEventArgs e)
+        {
+            _audioPlayer.Stop();
+            foreach (var track in MsuTracks)
+            {
+                track.PcmPath = null;
+                track.IsPlaying = false;
+            }
+            MsuPackName = string.Empty;
+            IncludeMsuPack = false;
+            RefreshMsuState();
+            ShowStatus("Music pack cleared.", isError: false);
+        }
+
+        private void PlayTrack_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not System.Windows.Controls.Button btn || btn.Tag is not MsuTrackSlot track) return;
+            TogglePlayback(track, isOriginal: false);
+        }
+
+        private void PlayOriginal_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not System.Windows.Controls.Button btn || btn.Tag is not MsuTrackSlot track) return;
+            TogglePlayback(track, isOriginal: true);
+        }
+
+        private void TogglePlayback(MsuTrackSlot track, bool isOriginal)
+        {
+            // Stop all first
+            foreach (var t in MsuTracks) { t.IsPlaying = false; t.IsPlayingOriginal = false; }
+            _audioPlayer.Stop();
+
+            string? path = isOriginal ? track.OriginalPcmPath : track.PcmPath;
+            if (path is null) return;
+
+            if (isOriginal)
+                track.IsPlayingOriginal = true;
+            else
+                track.IsPlaying = true;
+
+            _audioPlayer.PlaybackStopped += (_, _) => Dispatcher.Invoke(() =>
+            {
+                track.IsPlaying = false;
+                track.IsPlayingOriginal = false;
+            });
+
+            var err = _audioPlayer.Play(path);
+            if (err is not null)
+            {
+                track.IsPlaying = false;
+                track.IsPlayingOriginal = false;
+                ShowStatus(err, isError: true);
+            }
+        }
+
+        private void AssignTrack_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not System.Windows.Controls.Button btn || btn.Tag is not MsuTrackSlot track) return;
+
+            var dlg = new OpenFileDialog
+            {
+                Filter = "MSU-1 PCM (*.pcm)|*.pcm",
+                Title = $"Assign PCM for Slot {track.SlotDisplay} — {track.Name}"
+            };
+            if (dlg.ShowDialog() != true) return;
+
+            var validationErr = MsuPcmValidator.Validate(dlg.FileName);
+            if (validationErr is not null)
+            {
+                track.ValidationError = validationErr;
+                ShowStatus($"Invalid PCM: {validationErr}", isError: true);
+                return;
+            }
+
+            track.PcmPath = dlg.FileName;
+            track.ValidationError = null;
+            RefreshMsuState();
+        }
+
+        private void ClearTrack_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not System.Windows.Controls.Button btn || btn.Tag is not MsuTrackSlot track) return;
+
+            if (track.IsPlaying) _audioPlayer.Stop();
+            track.PcmPath = null;
+            track.ValidationError = null;
+            track.IsPlaying = false;
+            RefreshMsuState();
+        }
+
+        private void ApplyPlaylistToTracks(MsuPlaylist playlist)
+        {
+            // Clear existing assignments
+            foreach (var track in MsuTracks) { track.PcmPath = null; track.ValidationError = null; }
+
+            foreach (var (slotKey, pcmPath) in playlist.Tracks)
+            {
+                if (!int.TryParse(slotKey, out int slot)) continue;
+                var track = MsuTracks.FirstOrDefault(t => t.SlotNumber == slot);
+                if (track is null) continue;
+
+                if (File.Exists(pcmPath))
+                {
+                    track.PcmPath = pcmPath;
+                    var err = MsuPcmValidator.Validate(pcmPath);
+                    track.ValidationError = err;
+                }
+            }
+
+            MsuPackName = playlist.Name;
+            IncludeMsuPack = MsuTracks.Any(t => t.HasFile);
+            RefreshMsuState();
         }
 
         private void ShowStatus(string message, bool isError)

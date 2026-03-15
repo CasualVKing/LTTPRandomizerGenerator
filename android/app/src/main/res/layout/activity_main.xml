@@ -166,6 +166,76 @@
             <View android:background="#3A3A55" android:layout_marginVertical="8dp"
                 android:layout_width="match_parent" android:layout_height="1dp"/>
 
+            <!-- MSU Music Pack section -->
+            <TextView android:id="@+id/msuToggle"
+                android:text="@string/msu_toggle_collapsed"
+                android:textColor="#6C63FF"
+                android:textSize="11sp" android:textStyle="bold" android:letterSpacing="0.1"
+                android:layout_marginBottom="8dp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <LinearLayout android:id="@+id/msuContainer"
+                android:orientation="vertical"
+                android:visibility="gone"
+                android:layout_marginBottom="8dp"
+                android:layout_width="match_parent" android:layout_height="wrap_content">
+
+                <!-- Pack summary -->
+                <TextView android:id="@+id/msuPackSummary"
+                    android:textColor="#888899" android:textSize="11sp"
+                    android:visibility="gone"
+                    android:layout_marginBottom="6dp"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+
+                <!-- Import buttons -->
+                <LinearLayout android:orientation="horizontal"
+                    android:layout_marginBottom="8dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <Button android:id="@+id/importLttpackBtn" android:text="@string/import_lttppack"
+                        android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
+                        android:textSize="12sp"
+                        android:layout_weight="1"
+                        android:layout_width="0dp" android:layout_height="wrap_content"/>
+                    <Button android:id="@+id/importOstZipBtn" android:text="@string/import_ost_zip"
+                        android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
+                        android:textSize="12sp"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1"
+                        android:layout_width="0dp" android:layout_height="wrap_content"/>
+                </LinearLayout>
+
+                <!-- Track list (scrollable within parent scroll) -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/msuTrackList"
+                    android:nestedScrollingEnabled="false"
+                    android:layout_marginBottom="8dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"/>
+
+                <!-- Bottom buttons row -->
+                <LinearLayout android:orientation="horizontal"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <Switch android:id="@+id/includeMsuSwitch"
+                        android:text="@string/include_msu_label"
+                        android:textColor="#B0B0CC" android:textSize="12sp"
+                        android:layout_weight="1"
+                        android:layout_width="0dp" android:layout_height="wrap_content"/>
+                    <Button android:id="@+id/exportLttpackBtn" android:text="@string/export_lttppack"
+                        android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
+                        android:textSize="11sp"
+                        android:layout_marginStart="4dp"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+                    <Button android:id="@+id/clearMsuBtn" android:text="@string/clear_msu_pack"
+                        android:backgroundTint="#AA3333" android:textColor="#E0E0F0"
+                        android:textSize="11sp"
+                        android:layout_marginStart="4dp"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Divider -->
+            <View android:background="#3A3A55" android:layout_marginVertical="8dp"
+                android:layout_width="match_parent" android:layout_height="1dp"/>
+
             <!-- Settings (dynamically populated) -->
             <TextView android:id="@+id/settingsToggle"
                 android:text="@string/settings_toggle_collapsed"

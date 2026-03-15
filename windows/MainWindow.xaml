@@ -245,6 +245,113 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
+                <Separator Margin="0,4,0,10" Background="{StaticResource BorderBrush}"/>
+
+                <!-- MSU Music Pack section -->
+                <TextBlock Text="{Binding MsuToggleLabel}"
+                           Foreground="{StaticResource TextMutedBrush}"
+                           FontSize="11" FontWeight="SemiBold"
+                           Cursor="Hand"
+                           Margin="0,0,0,8"
+                           MouseLeftButtonUp="ToggleMsu_Click"/>
+
+                <StackPanel Visibility="{Binding IsMsuExpanded, Converter={StaticResource BoolToVis}}"
+                            Margin="0,0,0,10">
+
+                    <!-- Pack info -->
+                    <TextBlock Text="{Binding MsuPackSummary}"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               FontSize="11" Margin="0,0,0,6"
+                               Visibility="{Binding HasMsuPack, Converter={StaticResource BoolToVis}}"/>
+
+                    <!-- Import / Export buttons -->
+                    <WrapPanel Margin="0,0,0,8">
+                        <Button Content="Import .lttppack" Margin="0,0,6,4"
+                                Style="{StaticResource DarkButton}" Click="ImportLttppack_Click"/>
+                        <Button Content="Import OST Folder" Margin="0,0,6,4"
+                                Style="{StaticResource DarkButton}" Click="ImportOstFolder_Click"/>
+                        <Button Content="Import OST ZIP" Margin="0,0,6,4"
+                                Style="{StaticResource DarkButton}" Click="ImportOstZip_Click"/>
+                        <Button Content="Export .lttppack" Margin="0,0,6,4"
+                                Style="{StaticResource DarkButton}" Click="ExportPack_Click"
+                                IsEnabled="{Binding HasMsuPack}"/>
+                        <Button Content="Clear Pack" Margin="0,0,6,4"
+                                Style="{StaticResource DangerOutlineButton}" Click="ClearPack_Click"
+                                IsEnabled="{Binding HasMsuPack}"/>
+                    </WrapPanel>
+
+                    <!-- OST import progress -->
+                    <TextBlock x:Name="MsuProgressText"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               FontSize="11" Margin="0,0,0,4" Visibility="Collapsed"/>
+
+                    <!-- Track list -->
+                    <ItemsControl ItemsSource="{Binding MsuTracks}" Margin="0,0,0,8">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,2" ToolTip="{Binding ValidationError}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="32"/>
+                                        <ColumnDefinition Width="160"/>
+                                        <ColumnDefinition Width="42"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" Text="{Binding SlotDisplay}"
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               FontSize="11" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Name}"
+                                               Foreground="{StaticResource TextBrush}"
+                                               FontSize="11" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding TypeLabel}"
+                                               Foreground="#888" FontSize="10"
+                                               VerticalAlignment="Center"
+                                               Visibility="{Binding HasTypeLabel, Converter={StaticResource BoolToVis}}"/>
+
+                                    <TextBlock Grid.Column="3" Text="{Binding FileName}"
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               FontSize="11" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               Margin="4,0"/>
+
+                                    <StackPanel Grid.Column="4" Orientation="Horizontal">
+                                        <Button Content="{Binding PlayButtonText}" FontSize="10"
+                                                MinWidth="24" Padding="4,1"
+                                                Style="{StaticResource DarkButton}"
+                                                Visibility="{Binding HasFile, Converter={StaticResource BoolToVis}}"
+                                                Click="PlayTrack_Click" Tag="{Binding}"/>
+                                        <Button Content="{Binding OriginalPlayButtonText}" FontSize="10"
+                                                MinWidth="24" Padding="4,1" Margin="2,0,0,0"
+                                                Style="{StaticResource DarkButton}"
+                                                Visibility="{Binding HasOriginal, Converter={StaticResource BoolToVis}}"
+                                                Click="PlayOriginal_Click" Tag="{Binding}"/>
+                                        <Button Content="..." FontSize="10"
+                                                MinWidth="24" Padding="4,1" Margin="2,0,0,0"
+                                                Style="{StaticResource DarkButton}"
+                                                Click="AssignTrack_Click" Tag="{Binding}"/>
+                                        <Button Content="×" FontSize="10"
+                                                MinWidth="24" Padding="4,1" Margin="2,0,0,0"
+                                                Style="{StaticResource DarkButton}"
+                                                Visibility="{Binding HasFile, Converter={StaticResource BoolToVis}}"
+                                                Click="ClearTrack_Click" Tag="{Binding}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Include MSU toggle -->
+                    <CheckBox Content="Include MSU music pack with generated ROM"
+                              Foreground="{StaticResource TextBrush}"
+                              IsChecked="{Binding IncludeMsuPack}"
+                              IsEnabled="{Binding HasMsuPack}"
+                              Margin="0,0,0,4"/>
+                </StackPanel>
+
+                <Separator Margin="0,0,0,10" Background="{StaticResource BorderBrush}"/>
+
                 <!-- Randomizer Settings section -->
                 <TextBlock Text="{Binding SettingsToggleLabel}"
                            Foreground="{StaticResource TextMutedBrush}"

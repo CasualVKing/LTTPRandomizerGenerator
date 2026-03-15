@@ -37,6 +37,17 @@ A utility that generates randomized *A Link to the Past* ROMs using the [alttpr.
 - Selecting Default (Link) resets to the original sprite
 - Android: scrollable header with floating Cancel and scroll-to-top buttons for small screens
 
+### MSU-1 Music Packs
+- Import `.lttppack` bundles or original soundtrack files to replace in-game music
+- 61 track slots covering all overworld, dungeon, boss, and jingle tracks
+- **Windows**: convert MP3/WAV/AIFF/FLAC → MSU-1 PCM automatically via the OST import
+- **Android**: import pre-converted PCM files or `.lttppack` bundles from Windows
+- Smart OST matching — 4-pass algorithm matches files to slots by alias, number, or name
+- Audio preview — play any assigned or original track inline before generating
+- Export assembled packs as `.lttppack` for cross-platform sharing
+- MSU companion files (`.msu` + per-slot `.pcm`) written alongside the ROM automatically
+- Pack assignments persisted across sessions
+
 ### General
 - Full feature parity across Windows and Android
 - Self-contained — no Python, PHP, or other runtimes required

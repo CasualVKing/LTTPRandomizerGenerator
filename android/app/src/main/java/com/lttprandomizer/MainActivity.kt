@@ -52,6 +52,14 @@ class MainActivity : AppCompatActivity() {
     private var seedHash: String = ""
     private var fetchedSeed: AlttprApiClient.SeedResult? = null
 
+    // MSU Music Pack state
+    private val msuTracks = mutableListOf<MsuTrackSlot>()
+    private var msuAdapter: MsuTrackAdapter? = null
+    private var msuExpanded = false
+    private var includeMsu = false
+    private var msuPackName = ""
+    private val audioPlayer = MsuPcmAudioPlayer()
+
     // ── File pickers ─────────────────────────────────────────────────────────
 
     private val pickRom = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -92,6 +100,35 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // MSU file pickers
+    private val importPackLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri ?: return@registerForActivityResult
+        lifecycleScope.launch {
+            val (playlist, error) = withContext(Dispatchers.IO) {
+                contentResolver.openInputStream(uri)?.use { MsuPackImporter.import(this@MainActivity, it) }
+                    ?: Pair(null, "Cannot open file.")
+            }
+            if (error != null) { showStatus(error, isError = true); return@launch }
+            applyPlaylistToTracks(playlist!!)
+            showStatus("Imported pack: ${playlist.name} (${playlist.tracks.size} tracks)")
+        }
+    }
+
+    private val importOstZipLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri ?: return@registerForActivityResult
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                contentResolver.openInputStream(uri)?.use { MsuOriginalSoundtrack.importFromZip(this@MainActivity, it, msuTracks) }
+                    ?: "Cannot open file."
+            }
+            if (result != null)
+                showStatus(result, isError = result.contains("failed", ignoreCase = true))
+            else
+                showStatus("Original soundtrack imported successfully.")
+            refreshMsuUi()
+        }
+    }
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -107,9 +144,11 @@ class MainActivity : AppCompatActivity() {
 
         buildSettingRows()
         buildCustomizationRows()
+        initMsuTracks()
         loadPresets()
         restoreLastSettings()
         restoreCustomization()
+        restoreMsuSettings()
         restorePaths()
         setupUi()
         tryMatchPreset()
@@ -123,6 +162,7 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
         PresetManager.saveLastSettings(this, currentSettings())
         PresetManager.saveCustomization(this, currentCustomization())
+        saveMsuSettings()
     }
 
     // ── Setup ─────────────────────────────────────────────────────────────────
@@ -305,6 +345,9 @@ class MainActivity : AppCompatActivity() {
                 .setNegativeButton("Cancel", null)
                 .show()
         }
+
+        // MSU Music Pack
+        setupMsu()
 
         // Seed input
         binding.loadSeedBtn.setOnClickListener { loadSeed() }
@@ -640,7 +683,22 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 updateOverlayStatus("Writing output ROM…")
-                withContext(Dispatchers.IO) { writeOutput(output, seed.hash, seed.permalink, patchedRom) }
+                val writeResult = withContext(Dispatchers.IO) { writeOutput(output, seed.hash, seed.permalink, patchedRom) }
+
+                // MSU music pack
+                if (includeMsu && msuTracks.any { it.hasFile }) {
+                    updateOverlayStatus("Writing MSU music pack…")
+                    val activeTracks = msuTracks.filter { it.hasFile }
+                        .associate { it.slotNumber.toString() to it.pcmPath!! }
+                    val msuErr = withContext(Dispatchers.IO) {
+                        MsuPackApplier.apply(this@MainActivity, writeResult.dir, writeResult.fileName, activeTracks)
+                    }
+                    if (msuErr != null) {
+                        hideOverlay()
+                        showStatus("MSU error: $msuErr", isError = true)
+                        return@launch
+                    }
+                }
 
                 lastSeedPermalink = seed.permalink
                 binding.seedLinkText.text = seed.permalink
@@ -657,18 +715,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun writeOutput(treeUri: Uri, hash: String, permalink: String, rom: ByteArray) {
+    data class WriteResult(val dir: androidx.documentfile.provider.DocumentFile, val fileName: String)
+
+    private fun writeOutput(treeUri: Uri, hash: String, permalink: String, rom: ByteArray): WriteResult {
         val docTree = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri)
             ?: throw IllegalStateException("Cannot access output folder. Please re-select it.")
 
         val lttprDir = docTree.findFile(lttprSubfolder)
             ?: docTree.createDirectory(lttprSubfolder)
             ?: throw IllegalStateException("Cannot create $lttprSubfolder subfolder in output folder.")
-        val file = lttprDir.createFile("application/octet-stream", "lttp_rand_$hash.sfc")
+        val romFileName = "lttp_rand_$hash.sfc"
+        val file = lttprDir.createFile("application/octet-stream", romFileName)
             ?: throw IllegalStateException("Cannot create output file in lttpr folder.")
         val stream = contentResolver.openOutputStream(file.uri)
             ?: throw IllegalStateException("Cannot open output file for writing.")
         stream.use { it.write(rom) }
+        return WriteResult(lttprDir, romFileName)
     }
 
     // ── UI helpers ────────────────────────────────────────────────────────────
@@ -703,6 +765,157 @@ class MainActivity : AppCompatActivity() {
         } else {
             img.visibility = View.GONE
             img.setImageDrawable(null)
+        }
+    }
+
+    // ── MSU Music Pack helpers ─────────────────────────────────────────────
+
+    private fun initMsuTracks() {
+        msuTracks.clear()
+        msuTracks.addAll(MsuTrackCatalog.load(this))
+        MsuOriginalSoundtrack.loadCachedOriginals(this, msuTracks)
+    }
+
+    private fun setupMsu() {
+        msuAdapter = MsuTrackAdapter(msuTracks, object : MsuTrackListener {
+            override fun onPlayClick(track: MsuTrackSlot, position: Int) {
+                togglePlayback(track, isOriginal = false, position)
+            }
+            override fun onPlayOriginalClick(track: MsuTrackSlot, position: Int) {
+                togglePlayback(track, isOriginal = true, position)
+            }
+        })
+        binding.msuTrackList.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
+        binding.msuTrackList.adapter = msuAdapter
+
+        binding.msuToggle.setOnClickListener {
+            msuExpanded = !msuExpanded
+            binding.msuContainer.visibility = if (msuExpanded) View.VISIBLE else View.GONE
+            binding.msuToggle.text = getString(
+                if (msuExpanded) R.string.msu_toggle_expanded else R.string.msu_toggle_collapsed
+            )
+        }
+
+        binding.importLttpackBtn.setOnClickListener {
+            importPackLauncher.launch(arrayOf("application/octet-stream", "application/zip"))
+        }
+
+        binding.importOstZipBtn.setOnClickListener {
+            importOstZipLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
+        }
+
+        binding.includeMsuSwitch.setOnCheckedChangeListener { _, isChecked ->
+            includeMsu = isChecked
+        }
+
+        binding.exportLttpackBtn.setOnClickListener { exportMsuPack() }
+        binding.clearMsuBtn.setOnClickListener { clearMsuPack() }
+    }
+
+    private fun togglePlayback(track: MsuTrackSlot, isOriginal: Boolean, position: Int) {
+        // Stop all playback first
+        for (t in msuTracks) { t.isPlaying = false; t.isPlayingOriginal = false }
+        audioPlayer.stop()
+        msuAdapter?.notifyDataSetChanged()
+
+        val path = if (isOriginal) track.originalPcmPath else track.pcmPath
+        if (path == null) return
+
+        if (isOriginal) track.isPlayingOriginal = true else track.isPlaying = true
+        msuAdapter?.notifyItemChanged(position)
+
+        audioPlayer.onPlaybackStopped = {
+            track.isPlaying = false
+            track.isPlayingOriginal = false
+            msuAdapter?.notifyItemChanged(position)
+        }
+
+        val err = audioPlayer.play(path, lifecycleScope)
+        if (err != null) {
+            track.isPlaying = false
+            track.isPlayingOriginal = false
+            msuAdapter?.notifyItemChanged(position)
+            showStatus(err, isError = true)
+        }
+    }
+
+    private fun applyPlaylistToTracks(playlist: MsuPlaylist) {
+        for (track in msuTracks) { track.pcmPath = null }
+        for ((slotKey, pcmPath) in playlist.tracks) {
+            val slot = slotKey.toIntOrNull() ?: continue
+            val track = msuTracks.find { it.slotNumber == slot } ?: continue
+            if (java.io.File(pcmPath).exists()) track.pcmPath = pcmPath
+        }
+        msuPackName = playlist.name
+        includeMsu = msuTracks.any { it.hasFile }
+        binding.includeMsuSwitch.isChecked = includeMsu
+        refreshMsuUi()
+    }
+
+    private val exportPackLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        uri ?: return@registerForActivityResult
+        val playlist = MsuPlaylist(
+            name = msuPackName.ifEmpty { "my-msu-pack" },
+            tracks = msuTracks.filter { it.hasFile }
+                .associate { it.slotNumber.toString() to it.pcmPath!! }
+        )
+        lifecycleScope.launch {
+            val error = withContext(Dispatchers.IO) {
+                contentResolver.openOutputStream(uri)?.use { MsuPackImporter.export(it, playlist) }
+                    ?: "Cannot open file for writing."
+            }
+            if (error != null) showStatus(error, isError = true)
+            else showStatus("Pack exported successfully.")
+        }
+    }
+
+    private fun exportMsuPack() {
+        val name = msuPackName.ifEmpty { "my-msu-pack" }
+        exportPackLauncher.launch("$name.lttppack")
+    }
+
+    private fun clearMsuPack() {
+        audioPlayer.stop()
+        for (track in msuTracks) {
+            track.pcmPath = null
+            track.isPlaying = false
+        }
+        msuPackName = ""
+        includeMsu = false
+        binding.includeMsuSwitch.isChecked = false
+        refreshMsuUi()
+        showStatus("Music pack cleared.")
+    }
+
+    private fun restoreMsuSettings() {
+        val settings = PresetManager.loadMsuSettings(this)
+        if (settings.tracks.isNotEmpty()) {
+            val playlist = MsuPlaylist(name = settings.packName, tracks = settings.tracks)
+            applyPlaylistToTracks(playlist)
+            includeMsu = settings.includeMsu
+            binding.includeMsuSwitch.isChecked = includeMsu
+        }
+    }
+
+    private fun saveMsuSettings() {
+        val settings = MsuSettings(
+            includeMsu = includeMsu,
+            packName = msuPackName,
+            tracks = msuTracks.filter { it.hasFile }
+                .associate { it.slotNumber.toString() to it.pcmPath!! }
+        )
+        PresetManager.saveMsuSettings(this, settings)
+    }
+
+    private fun refreshMsuUi() {
+        msuAdapter?.notifyDataSetChanged()
+        val hasTracks = msuTracks.any { it.hasFile }
+        val count = msuTracks.count { it.hasFile }
+        if (hasTracks) {
+            binding.msuPackSummary.text = "$msuPackName — $count of ${msuTracks.size} tracks assigned"
+            binding.msuPackSummary.visibility = View.VISIBLE
+        } else {
+            binding.msuPackSummary.visibility = View.GONE
         }
     }
 

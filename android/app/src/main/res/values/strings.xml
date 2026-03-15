@@ -52,6 +52,15 @@
     <!-- Generation overlay -->
     <string name="overlay_dismiss">Done</string>
 
+    <!-- MSU Music Pack -->
+    <string name="msu_toggle_collapsed">▶ MUSIC PACK</string>
+    <string name="msu_toggle_expanded">▲ MUSIC PACK</string>
+    <string name="import_lttppack">Import .lttppack</string>
+    <string name="import_ost_zip">Import OST (ZIP)</string>
+    <string name="include_msu_label">Include MSU pack</string>
+    <string name="export_lttppack">Export</string>
+    <string name="clear_msu_pack">Clear</string>
+
     <!-- Seed input -->
     <string name="seed_label">Seed (optional)</string>
     <string name="seed_hint">Hash or URL…</string>
