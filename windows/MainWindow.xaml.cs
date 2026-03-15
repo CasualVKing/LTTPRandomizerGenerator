@@ -214,6 +214,9 @@ namespace LTTPRandomizerGenerator
         {
             OnPropertyChanged(nameof(HasMsuPack));
             OnPropertyChanged(nameof(MsuPackSummary));
+            // Auto-check when tracks are first assigned
+            if (HasMsuPack && !IncludeMsuPack)
+                IncludeMsuPack = true;
             if (_initialized) SaveMsuSettings();
         }
 

@@ -258,6 +258,12 @@
                 <StackPanel Visibility="{Binding IsMsuExpanded, Converter={StaticResource BoolToVis}}"
                             Margin="0,0,0,10">
 
+                    <!-- Include MSU toggle (top, auto-checked when tracks assigned) -->
+                    <CheckBox Content="Include MSU music pack with generated ROM"
+                              Foreground="{StaticResource TextBrush}"
+                              IsChecked="{Binding IncludeMsuPack}"
+                              Margin="0,0,0,6"/>
+
                     <!-- Pack info -->
                     <TextBlock Text="{Binding MsuPackSummary}"
                                Foreground="{StaticResource TextMutedBrush}"
@@ -395,13 +401,6 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-
-                    <!-- Include MSU toggle -->
-                    <CheckBox Content="Include MSU music pack with generated ROM"
-                              Foreground="{StaticResource TextBrush}"
-                              IsChecked="{Binding IncludeMsuPack}"
-                              IsEnabled="{Binding HasMsuPack}"
-                              Margin="0,0,0,4"/>
 
                     <!-- Library picker popup -->
                     <Popup x:Name="LibraryPopup" StaysOpen="False"

@@ -1031,6 +1031,11 @@ class MainActivity : AppCompatActivity() {
         if (hasTracks) {
             binding.msuPackSummary.text = "$msuPackName — $count of ${msuTracks.size} tracks assigned"
             binding.msuPackSummary.visibility = View.VISIBLE
+            // Auto-check when tracks are first assigned
+            if (!includeMsu) {
+                includeMsu = true
+                binding.includeMsuSwitch.isChecked = true
+            }
         } else {
             binding.msuPackSummary.visibility = View.GONE
         }
