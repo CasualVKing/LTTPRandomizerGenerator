@@ -280,6 +280,55 @@
                                 IsEnabled="{Binding HasMsuPack}"/>
                     </WrapPanel>
 
+                    <!-- Library folder config -->
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Library:"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Grid.Column="1" Text="{Binding LibraryFolderDisplay}"
+                                   Foreground="{StaticResource TextBrush}"
+                                   FontSize="11" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <Button Grid.Column="2" Content="Set Folder" Margin="6,0,0,0"
+                                Style="{StaticResource DarkButton}" FontSize="11"
+                                Click="SetLibraryFolder_Click"/>
+                    </Grid>
+
+                    <!-- Playlist row -->
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Playlist:"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Grid.Column="1" Text="{Binding CurrentPlaylistName}"
+                                   Foreground="{StaticResource TextBrush}"
+                                   FontSize="11" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <Button Grid.Column="2" Content="Save" Margin="6,0,0,0"
+                                Style="{StaticResource DarkButton}" FontSize="11"
+                                IsEnabled="{Binding HasMsuPack}"
+                                Click="SavePlaylist_Click"/>
+                        <Button Grid.Column="3" Content="Load" Margin="4,0,0,0"
+                                Style="{StaticResource DarkButton}" FontSize="11"
+                                Click="LoadPlaylist_Click"/>
+                    </Grid>
+
+                    <!-- Track search -->
+                    <TextBox x:Name="TrackSearchBox"
+                             Style="{StaticResource DarkTextBox}"
+                             FontSize="11" Margin="0,0,0,6"
+                             TextChanged="TrackSearch_TextChanged"/>
+
                     <!-- OST import progress -->
                     <TextBlock x:Name="MsuProgressText"
                                Foreground="{StaticResource TextMutedBrush}"
@@ -292,6 +341,7 @@
                                 <Grid Margin="0,2" ToolTip="{Binding ValidationError}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="32"/>
+                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="160"/>
                                         <ColumnDefinition Width="42"/>
                                         <ColumnDefinition Width="*"/>
@@ -301,36 +351,40 @@
                                     <TextBlock Grid.Column="0" Text="{Binding SlotDisplay}"
                                                Foreground="{StaticResource TextMutedBrush}"
                                                FontSize="11" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding Name}"
+
+                                    <!-- OST play button — next to track name -->
+                                    <Button Grid.Column="1"
+                                            Content="{Binding OriginalPlayButtonText}" FontSize="10"
+                                            MinWidth="24" Padding="4,1" Margin="0,0,4,0"
+                                            Style="{StaticResource DarkButton}"
+                                            Visibility="{Binding HasOriginal, Converter={StaticResource BoolToVis}}"
+                                            Click="PlayOriginal_Click" Tag="{Binding}"/>
+
+                                    <TextBlock Grid.Column="2" Text="{Binding Name}"
                                                Foreground="{StaticResource TextBrush}"
                                                FontSize="11" VerticalAlignment="Center"
                                                TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding TypeLabel}"
+                                    <TextBlock Grid.Column="3" Text="{Binding TypeLabel}"
                                                Foreground="#888" FontSize="10"
                                                VerticalAlignment="Center"
                                                Visibility="{Binding HasTypeLabel, Converter={StaticResource BoolToVis}}"/>
 
-                                    <TextBlock Grid.Column="3" Text="{Binding FileName}"
+                                    <TextBlock Grid.Column="4" Text="{Binding FileName}"
                                                Foreground="{StaticResource TextMutedBrush}"
                                                FontSize="11" VerticalAlignment="Center"
                                                TextTrimming="CharacterEllipsis"
                                                Margin="4,0"/>
 
-                                    <StackPanel Grid.Column="4" Orientation="Horizontal">
+                                    <StackPanel Grid.Column="5" Orientation="Horizontal">
                                         <Button Content="{Binding PlayButtonText}" FontSize="10"
                                                 MinWidth="24" Padding="4,1"
                                                 Style="{StaticResource DarkButton}"
                                                 Visibility="{Binding HasFile, Converter={StaticResource BoolToVis}}"
                                                 Click="PlayTrack_Click" Tag="{Binding}"/>
-                                        <Button Content="{Binding OriginalPlayButtonText}" FontSize="10"
-                                                MinWidth="24" Padding="4,1" Margin="2,0,0,0"
-                                                Style="{StaticResource DarkButton}"
-                                                Visibility="{Binding HasOriginal, Converter={StaticResource BoolToVis}}"
-                                                Click="PlayOriginal_Click" Tag="{Binding}"/>
                                         <Button Content="..." FontSize="10"
                                                 MinWidth="24" Padding="4,1" Margin="2,0,0,0"
                                                 Style="{StaticResource DarkButton}"
-                                                Click="AssignTrack_Click" Tag="{Binding}"/>
+                                                Click="AssignTrack_FromLibrary" Tag="{Binding}"/>
                                         <Button Content="×" FontSize="10"
                                                 MinWidth="24" Padding="4,1" Margin="2,0,0,0"
                                                 Style="{StaticResource DarkButton}"
@@ -348,6 +402,33 @@
                               IsChecked="{Binding IncludeMsuPack}"
                               IsEnabled="{Binding HasMsuPack}"
                               Margin="0,0,0,4"/>
+
+                    <!-- Library picker popup -->
+                    <Popup x:Name="LibraryPopup" StaysOpen="False"
+                           Placement="Bottom" AllowsTransparency="True">
+                        <Border Background="#2A2A3E" BorderBrush="#3A3A55"
+                                BorderThickness="1" CornerRadius="4" Padding="8"
+                                MinWidth="320" MaxHeight="400">
+                            <StackPanel>
+                                <TextBlock x:Name="LibraryPopupTitle"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           FontSize="11" Margin="0,0,0,6"/>
+                                <TextBox x:Name="LibrarySearchBox"
+                                         Style="{StaticResource DarkTextBox}"
+                                         FontSize="11" Margin="0,0,0,4"
+                                         TextChanged="LibrarySearch_TextChanged"/>
+                                <TextBlock x:Name="LibraryCountText"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           FontSize="10" Margin="0,0,0,4"/>
+                                <ScrollViewer MaxHeight="280" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel x:Name="LibraryList"/>
+                                </ScrollViewer>
+                                <Button Content="Browse File..." Margin="0,6,0,0"
+                                        Style="{StaticResource DarkButton}" FontSize="11"
+                                        Click="LibraryBrowseFile_Click"/>
+                            </StackPanel>
+                        </Border>
+                    </Popup>
                 </StackPanel>
 
                 <Separator Margin="0,0,0,10" Background="{StaticResource BorderBrush}"/>

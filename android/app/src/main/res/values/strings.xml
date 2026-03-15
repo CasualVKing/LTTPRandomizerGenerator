@@ -60,6 +60,13 @@
     <string name="include_msu_label">Include MSU pack</string>
     <string name="export_lttppack">Export</string>
     <string name="clear_msu_pack">Clear</string>
+    <string name="msu_library_label">Library:</string>
+    <string name="msu_library_not_set">Not set</string>
+    <string name="msu_set_folder">Set Folder</string>
+    <string name="msu_playlist_label">Playlist:</string>
+    <string name="msu_save_playlist">Save</string>
+    <string name="msu_load_playlist">Load</string>
+    <string name="msu_search_hint">Search tracks…</string>
 
     <!-- Seed input -->
     <string name="seed_label">Seed (optional)</string>

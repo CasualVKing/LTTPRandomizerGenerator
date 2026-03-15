@@ -203,6 +203,59 @@
                         android:layout_width="0dp" android:layout_height="wrap_content"/>
                 </LinearLayout>
 
+                <!-- Library folder config -->
+                <LinearLayout android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="6dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <TextView android:text="@string/msu_library_label" android:textColor="#888899"
+                        android:textSize="11sp" android:layout_marginEnd="4dp"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+                    <TextView android:id="@+id/msuLibraryPath" android:textColor="#E0E0F0"
+                        android:textSize="11sp" android:text="@string/msu_library_not_set"
+                        android:ellipsize="middle" android:maxLines="1"
+                        android:layout_weight="1"
+                        android:layout_width="0dp" android:layout_height="wrap_content"/>
+                    <Button android:id="@+id/setLibraryFolderBtn" android:text="@string/msu_set_folder"
+                        android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
+                        android:textSize="11sp" android:layout_marginStart="4dp"
+                        android:minWidth="0dp" android:paddingHorizontal="10dp"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+                </LinearLayout>
+
+                <!-- Playlist row -->
+                <LinearLayout android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="6dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <TextView android:text="@string/msu_playlist_label" android:textColor="#888899"
+                        android:textSize="11sp" android:layout_marginEnd="4dp"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+                    <TextView android:id="@+id/msuPlaylistName" android:textColor="#E0E0F0"
+                        android:textSize="11sp" android:text="(unsaved)"
+                        android:layout_weight="1"
+                        android:layout_width="0dp" android:layout_height="wrap_content"/>
+                    <Button android:id="@+id/savePlaylistBtn" android:text="@string/msu_save_playlist"
+                        android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
+                        android:textSize="11sp" android:layout_marginStart="4dp"
+                        android:minWidth="0dp" android:paddingHorizontal="10dp"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+                    <Button android:id="@+id/loadPlaylistBtn" android:text="@string/msu_load_playlist"
+                        android:backgroundTint="#3A3A55" android:textColor="#E0E0F0"
+                        android:textSize="11sp" android:layout_marginStart="4dp"
+                        android:minWidth="0dp" android:paddingHorizontal="10dp"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+                </LinearLayout>
+
+                <!-- Track search -->
+                <EditText android:id="@+id/msuTrackSearch"
+                    android:hint="@string/msu_search_hint" android:textColor="#E0E0F0"
+                    android:textColorHint="#555568" android:background="#2A2A3E"
+                    android:padding="8dp" android:textSize="11sp"
+                    android:inputType="text" android:maxLines="1"
+                    android:layout_marginBottom="6dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"/>
+
                 <!-- Track list (scrollable within parent scroll) -->
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/msuTrackList"

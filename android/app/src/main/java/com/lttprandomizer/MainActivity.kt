@@ -54,10 +54,13 @@ class MainActivity : AppCompatActivity() {
 
     // MSU Music Pack state
     private val msuTracks = mutableListOf<MsuTrackSlot>()
+    private var filteredMsuTracks = mutableListOf<MsuTrackSlot>()
     private var msuAdapter: MsuTrackAdapter? = null
     private var msuExpanded = false
     private var includeMsu = false
     private var msuPackName = ""
+    private var currentPlaylistName = "(unsaved)"
+    private val musicLibrary = MsuMusicLibrary()
     private val audioPlayer = MsuPcmAudioPlayer()
 
     // ── File pickers ─────────────────────────────────────────────────────────
@@ -126,6 +129,70 @@ class MainActivity : AppCompatActivity() {
             else
                 showStatus("Original soundtrack imported successfully.")
             refreshMsuUi()
+        }
+    }
+
+    // Library folder picker (copies PCMs to app-private storage)
+    private val pickLibraryFolderLauncher = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        uri ?: return@registerForActivityResult
+        contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        lifecycleScope.launch {
+            val count = withContext(Dispatchers.IO) {
+                // Copy PCM files from SAF tree to app-private library dir
+                val libDir = java.io.File(filesDir, "msu_library/pcm")
+                libDir.mkdirs()
+                val docTree = androidx.documentfile.provider.DocumentFile.fromTreeUri(this@MainActivity, uri)
+                var copied = 0
+                docTree?.listFiles()?.filter { it.name?.endsWith(".pcm", ignoreCase = true) == true }?.forEach { doc ->
+                    val destFile = java.io.File(libDir, doc.name ?: return@forEach)
+                    if (!destFile.exists()) {
+                        contentResolver.openInputStream(doc.uri)?.use { input ->
+                            destFile.outputStream().use { out -> input.copyTo(out) }
+                        }
+                    }
+                    copied++
+                }
+                musicLibrary.setFolder(libDir.absolutePath)
+                copied
+            }
+            binding.msuLibraryPath.text = "$count PCM files"
+            showStatus("Library set: $count files")
+            saveMsuSettings()
+        }
+    }
+
+    private val savePlaylistLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        uri ?: return@registerForActivityResult
+        val playlist = MsuPlaylist(
+            name = msuPackName.ifEmpty { "my-playlist" },
+            tracks = msuTracks.filter { it.hasFile }.associate { it.slotNumber.toString() to it.pcmPath!! }
+        )
+        lifecycleScope.launch {
+            val error = withContext(Dispatchers.IO) {
+                contentResolver.openOutputStream(uri)?.use { MsuPlaylistManager.save(it, playlist) }
+                    ?: "Cannot open file for writing."
+            }
+            if (error != null) showStatus(error, isError = true)
+            else {
+                currentPlaylistName = playlist.name
+                binding.msuPlaylistName.text = currentPlaylistName
+                showStatus("Playlist saved: ${playlist.name} (${playlist.tracks.size} tracks)")
+            }
+        }
+    }
+
+    private val loadPlaylistLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri ?: return@registerForActivityResult
+        lifecycleScope.launch {
+            val (playlist, error) = withContext(Dispatchers.IO) {
+                contentResolver.openInputStream(uri)?.use { MsuPlaylistManager.load(it) }
+                    ?: Pair(null, "Cannot open file.")
+            }
+            if (error != null) { showStatus(error, isError = true); return@launch }
+            applyPlaylistToTracks(playlist!!)
+            currentPlaylistName = playlist.name
+            binding.msuPlaylistName.text = currentPlaylistName
+            showStatus("Playlist loaded: ${playlist.name} (${playlist.tracks.size} tracks)")
         }
     }
 
@@ -777,7 +844,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupMsu() {
-        msuAdapter = MsuTrackAdapter(msuTracks, object : MsuTrackListener {
+        filteredMsuTracks.addAll(msuTracks)
+        msuAdapter = MsuTrackAdapter(filteredMsuTracks, object : MsuTrackListener {
             override fun onPlayClick(track: MsuTrackSlot, position: Int) {
                 togglePlayback(track, isOriginal = false, position)
             }
@@ -810,13 +878,52 @@ class MainActivity : AppCompatActivity() {
 
         binding.exportLttpackBtn.setOnClickListener { exportMsuPack() }
         binding.clearMsuBtn.setOnClickListener { clearMsuPack() }
+
+        // Library folder
+        binding.setLibraryFolderBtn.setOnClickListener {
+            pickLibraryFolderLauncher.launch(null)
+        }
+
+        // Playlist save/load
+        binding.savePlaylistBtn.setOnClickListener {
+            val name = msuPackName.ifEmpty { "my-playlist" }
+            savePlaylistLauncher.launch("$name.json")
+        }
+        binding.loadPlaylistBtn.setOnClickListener {
+            loadPlaylistLauncher.launch(arrayOf("application/json", "application/octet-stream"))
+        }
+
+        // Track search
+        binding.msuTrackSearch.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                val query = s?.toString()?.trim() ?: ""
+                filterMsuTracks(query)
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+    }
+
+    private fun filterMsuTracks(query: String) {
+        filteredMsuTracks.clear()
+        if (query.isEmpty()) {
+            filteredMsuTracks.addAll(msuTracks)
+        } else {
+            filteredMsuTracks.addAll(msuTracks.filter { it.name.contains(query, ignoreCase = true) })
+        }
+        msuAdapter?.notifyDataSetChanged()
     }
 
     private fun togglePlayback(track: MsuTrackSlot, isOriginal: Boolean, position: Int) {
-        // Stop all playback first
+        // If this track is already playing, just stop it
+        val wasPlaying = if (isOriginal) track.isPlayingOriginal else track.isPlaying
+
+        // Stop all playback
         for (t in msuTracks) { t.isPlaying = false; t.isPlayingOriginal = false }
         audioPlayer.stop()
         msuAdapter?.notifyDataSetChanged()
+
+        if (wasPlaying) return // toggle off — done
 
         val path = if (isOriginal) track.originalPcmPath else track.pcmPath
         if (path == null) return
@@ -889,6 +996,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun restoreMsuSettings() {
         val settings = PresetManager.loadMsuSettings(this)
+        if (settings.libraryFolder.isNotEmpty()) {
+            musicLibrary.setFolder(settings.libraryFolder)
+            binding.msuLibraryPath.text = "${musicLibrary.entries.size} PCM files"
+        }
+        if (settings.lastPlaylistName.isNotEmpty()) {
+            currentPlaylistName = settings.lastPlaylistName
+            binding.msuPlaylistName.text = currentPlaylistName
+        }
         if (settings.tracks.isNotEmpty()) {
             val playlist = MsuPlaylist(name = settings.packName, tracks = settings.tracks)
             applyPlaylistToTracks(playlist)
@@ -901,6 +1016,8 @@ class MainActivity : AppCompatActivity() {
         val settings = MsuSettings(
             includeMsu = includeMsu,
             packName = msuPackName,
+            libraryFolder = musicLibrary.libraryFolder ?: "",
+            lastPlaylistName = currentPlaylistName,
             tracks = msuTracks.filter { it.hasFile }
                 .associate { it.slotNumber.toString() to it.pcmPath!! }
         )
@@ -908,7 +1025,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshMsuUi() {
-        msuAdapter?.notifyDataSetChanged()
+        filterMsuTracks(binding.msuTrackSearch.text?.toString()?.trim() ?: "")
         val hasTracks = msuTracks.any { it.hasFile }
         val count = msuTracks.count { it.hasFile }
         if (hasTracks) {

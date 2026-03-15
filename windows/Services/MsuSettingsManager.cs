@@ -9,6 +9,8 @@ namespace LTTPRandomizerGenerator.Services
     {
         public bool IncludeMsu { get; set; }
         public string PackName { get; set; } = string.Empty;
+        public string LibraryFolder { get; set; } = string.Empty;
+        public string LastPlaylistPath { get; set; } = string.Empty;
         public Dictionary<string, string> Tracks { get; set; } = new();
     }
 

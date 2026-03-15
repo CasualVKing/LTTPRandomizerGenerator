@@ -11,6 +11,16 @@
         android:minWidth="28dp"
         android:layout_width="wrap_content" android:layout_height="wrap_content"/>
 
+    <!-- OST play button — next to track name -->
+    <Button android:id="@+id/playOrigBtn"
+        android:textColor="#E0E0F0" android:textSize="10sp"
+        android:backgroundTint="#3A3A55"
+        android:minWidth="0dp" android:minHeight="0dp"
+        android:paddingHorizontal="8dp" android:paddingVertical="2dp"
+        android:layout_marginEnd="4dp"
+        android:visibility="gone"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+
     <TextView android:id="@+id/trackName"
         android:textColor="#E0E0F0" android:textSize="11sp"
         android:ellipsize="end" android:maxLines="1"
@@ -36,15 +46,6 @@
         android:minWidth="0dp" android:minHeight="0dp"
         android:paddingHorizontal="8dp" android:paddingVertical="2dp"
         android:layout_marginStart="4dp"
-        android:visibility="gone"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-
-    <Button android:id="@+id/playOrigBtn"
-        android:textColor="#E0E0F0" android:textSize="10sp"
-        android:backgroundTint="#3A3A55"
-        android:minWidth="0dp" android:minHeight="0dp"
-        android:paddingHorizontal="8dp" android:paddingVertical="2dp"
-        android:layout_marginStart="2dp"
         android:visibility="gone"
         android:layout_width="wrap_content" android:layout_height="wrap_content"/>
 

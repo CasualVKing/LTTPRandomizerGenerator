@@ -217,6 +217,21 @@ namespace LTTPRandomizerGenerator
             if (_initialized) SaveMsuSettings();
         }
 
+        private readonly MsuMusicLibrary _musicLibrary = new();
+
+        public string LibraryFolderDisplay => string.IsNullOrEmpty(_musicLibrary.LibraryFolder)
+            ? "Not set" : $"{_musicLibrary.LibraryFolder} ({_musicLibrary.Entries.Count} files)";
+
+        private string _currentPlaylistName = "(unsaved)";
+        public string CurrentPlaylistName
+        {
+            get => _currentPlaylistName;
+            set { _currentPlaylistName = value; OnPropertyChanged(); }
+        }
+
+        private string _trackSearchText = string.Empty;
+        private MsuTrackSlot? _libraryPickTarget;
+
         // ── Sprite selection ──────────────────────────────────────────────────
 
         private string _spritePath = string.Empty;
@@ -830,6 +845,13 @@ namespace LTTPRandomizerGenerator
         private void RestoreMsuSettings()
         {
             var settings = MsuSettingsManager.Load();
+            if (!string.IsNullOrEmpty(settings.LibraryFolder))
+            {
+                _musicLibrary.SetFolder(settings.LibraryFolder);
+                OnPropertyChanged(nameof(LibraryFolderDisplay));
+            }
+            if (!string.IsNullOrEmpty(settings.LastPlaylistPath))
+                CurrentPlaylistName = Path.GetFileNameWithoutExtension(settings.LastPlaylistPath);
             if (settings.Tracks.Count > 0)
             {
                 var playlist = new MsuPlaylist { Name = settings.PackName, Tracks = settings.Tracks };
@@ -844,6 +866,8 @@ namespace LTTPRandomizerGenerator
             {
                 IncludeMsu = IncludeMsuPack,
                 PackName = MsuPackName,
+                LibraryFolder = _musicLibrary.LibraryFolder ?? string.Empty,
+                LastPlaylistPath = string.Empty,
                 Tracks = MsuTracks.Where(t => t.HasFile)
                     .ToDictionary(t => t.SlotNumber.ToString(), t => t.PcmPath!)
             };
@@ -969,9 +993,14 @@ namespace LTTPRandomizerGenerator
 
         private void TogglePlayback(MsuTrackSlot track, bool isOriginal)
         {
-            // Stop all first
+            // If this track is already playing, just stop it
+            bool wasPlaying = isOriginal ? track.IsPlayingOriginal : track.IsPlaying;
+
+            // Stop all playback
             foreach (var t in MsuTracks) { t.IsPlaying = false; t.IsPlayingOriginal = false; }
             _audioPlayer.Stop();
+
+            if (wasPlaying) return; // toggle off — done
 
             string? path = isOriginal ? track.OriginalPcmPath : track.PcmPath;
             if (path is null) return;
@@ -1052,6 +1081,254 @@ namespace LTTPRandomizerGenerator
 
             MsuPackName = playlist.Name;
             IncludeMsuPack = MsuTracks.Any(t => t.HasFile);
+            RefreshMsuState();
+        }
+
+        // ── Library / Playlist handlers ────────────────────────────────────────
+
+        private void SetLibraryFolder_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new System.Windows.Forms.FolderBrowserDialog
+            {
+                Description = "Select your MSU-1 music library folder",
+                SelectedPath = _musicLibrary.LibraryFolder ?? ""
+            };
+            if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+
+            _musicLibrary.SetFolder(dlg.SelectedPath);
+
+            // Auto-create subfolders
+            Directory.CreateDirectory(Path.Combine(dlg.SelectedPath, "_cache"));
+            Directory.CreateDirectory(Path.Combine(dlg.SelectedPath, "Playlists"));
+
+            OnPropertyChanged(nameof(LibraryFolderDisplay));
+            SaveMsuSettings();
+            ShowStatus($"Library set: {_musicLibrary.Entries.Count} files found.", isError: false);
+        }
+
+        private void SavePlaylist_Click(object sender, RoutedEventArgs e)
+        {
+            string initialDir = _musicLibrary.LibraryFolder is not null
+                ? Path.Combine(_musicLibrary.LibraryFolder, "Playlists")
+                : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            Directory.CreateDirectory(initialDir);
+
+            var dlg = new SaveFileDialog
+            {
+                Filter = "Playlist (*.json)|*.json",
+                InitialDirectory = initialDir,
+                FileName = string.IsNullOrEmpty(MsuPackName) ? "my-playlist" : MsuPackName
+            };
+            if (dlg.ShowDialog() != true) return;
+
+            var playlist = new MsuPlaylist
+            {
+                Name = Path.GetFileNameWithoutExtension(dlg.FileName),
+                Tracks = MsuTracks.Where(t => t.HasFile)
+                    .ToDictionary(t => t.SlotNumber.ToString(), t => t.PcmPath!)
+            };
+
+            var err = MsuPlaylistManager.Save(dlg.FileName, playlist);
+            if (err is not null) { ShowStatus(err, isError: true); return; }
+
+            MsuPackName = playlist.Name;
+            CurrentPlaylistName = playlist.Name;
+            ShowStatus($"Playlist saved: {playlist.Name} ({playlist.Tracks.Count} tracks)", isError: false);
+        }
+
+        private void LoadPlaylist_Click(object sender, RoutedEventArgs e)
+        {
+            string initialDir = _musicLibrary.LibraryFolder is not null
+                ? Path.Combine(_musicLibrary.LibraryFolder, "Playlists")
+                : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+
+            var dlg = new OpenFileDialog
+            {
+                Filter = "Playlist (*.json)|*.json",
+                InitialDirectory = initialDir
+            };
+            if (dlg.ShowDialog() != true) return;
+
+            var (playlist, err) = MsuPlaylistManager.Load(dlg.FileName);
+            if (err is not null) { ShowStatus(err, isError: true); return; }
+
+            ApplyPlaylistToTracks(playlist!);
+            CurrentPlaylistName = playlist!.Name;
+            ShowStatus($"Playlist loaded: {playlist.Name} ({playlist.Tracks.Count} tracks)", isError: false);
+        }
+
+        private void TrackSearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            _trackSearchText = TrackSearchBox.Text.Trim();
+            // Filter the ItemsControl by toggling Visibility on each track
+            foreach (var track in MsuTracks)
+            {
+                // Use a simple approach: set a filter flag, but since ItemsControl doesn't support
+                // ICollectionView easily, we iterate containers
+            }
+            // Workaround: use CollectionViewSource filtering
+            var view = System.Windows.Data.CollectionViewSource.GetDefaultView(MsuTracks);
+            if (string.IsNullOrEmpty(_trackSearchText))
+                view.Filter = null;
+            else
+                view.Filter = obj => obj is MsuTrackSlot t &&
+                    t.Name.Contains(_trackSearchText, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void AssignTrack_FromLibrary(object sender, RoutedEventArgs e)
+        {
+            if (sender is not System.Windows.Controls.Button btn || btn.Tag is not MsuTrackSlot track) return;
+            _libraryPickTarget = track;
+
+            // Populate library list
+            PopulateLibraryPopup("");
+
+            LibraryPopupTitle.Text = $"Assign to Slot {track.SlotDisplay} — {track.Name}";
+            LibrarySearchBox.Text = "";
+            LibraryPopup.PlacementTarget = btn;
+            LibraryPopup.IsOpen = true;
+        }
+
+        private void PopulateLibraryPopup(string filter)
+        {
+            LibraryList.Children.Clear();
+
+            var entries = _musicLibrary.Entries;
+            var filtered = string.IsNullOrEmpty(filter)
+                ? entries
+                : entries.Where(e => e.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            LibraryCountText.Text = $"{filtered.Count}/{entries.Count}";
+
+            foreach (var entry in filtered)
+            {
+                var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 1, 0, 1) };
+
+                // Play button
+                var playBtn = new System.Windows.Controls.Button
+                {
+                    Content = "▶", FontSize = 10, MinWidth = 22, Padding = new Thickness(3, 1, 3, 1),
+                    Style = (Style)FindResource("DarkButton"),
+                    IsEnabled = entry.IsPlayable,
+                    Tag = entry
+                };
+                playBtn.Click += LibraryItemPlay_Click;
+                row.Children.Add(playBtn);
+
+                // Name (clickable to assign)
+                var nameBtn = new System.Windows.Controls.Button
+                {
+                    Content = entry.Name, FontSize = 11, Padding = new Thickness(6, 2, 6, 2),
+                    Style = (Style)FindResource("DarkButton"),
+                    Foreground = new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xF0)),
+                    Tag = entry
+                };
+                nameBtn.Click += LibraryItemAssign_Click;
+                row.Children.Add(nameBtn);
+
+                // Format tag
+                if (!entry.IsPcm)
+                {
+                    var fmt = new TextBlock
+                    {
+                        Text = entry.FormatTag, FontSize = 9, Margin = new Thickness(4, 0, 0, 0),
+                        Foreground = new SolidColorBrush(Color.FromRgb(0x88, 0x88, 0x99)),
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+                    row.Children.Add(fmt);
+                }
+
+                // Cached indicator
+                if (entry.IsCached)
+                {
+                    var cached = new TextBlock
+                    {
+                        Text = "✓", FontSize = 10, Margin = new Thickness(4, 0, 0, 0),
+                        Foreground = new SolidColorBrush(Color.FromRgb(0x4C, 0xAF, 0x50)),
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+                    row.Children.Add(cached);
+                }
+
+                LibraryList.Children.Add(row);
+            }
+        }
+
+        private void LibrarySearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            PopulateLibraryPopup(LibrarySearchBox.Text.Trim());
+        }
+
+        private async void LibraryItemAssign_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not System.Windows.Controls.Button btn || btn.Tag is not MsuLibraryEntry entry) return;
+            if (_libraryPickTarget is null) return;
+
+            LibraryPopup.IsOpen = false;
+
+            string assignPath = entry.AssignablePath;
+
+            // If needs conversion, convert first
+            if (entry.NeedsConversion)
+            {
+                ShowStatus($"Converting {entry.Name}...", isError: false);
+                string cachePath = _musicLibrary.GetCacheTargetPath(entry.SourcePath);
+                Directory.CreateDirectory(Path.GetDirectoryName(cachePath)!);
+                var convErr = await MsuPcmConverter.ConvertAsync(entry.SourcePath, cachePath);
+                if (convErr is not null) { ShowStatus($"Conversion failed: {convErr}", isError: true); return; }
+                _musicLibrary.Refresh();
+                OnPropertyChanged(nameof(LibraryFolderDisplay));
+                assignPath = cachePath;
+            }
+
+            var validErr = MsuPcmValidator.Validate(assignPath);
+            if (validErr is not null)
+            {
+                _libraryPickTarget.ValidationError = validErr;
+                ShowStatus($"Invalid PCM: {validErr}", isError: true);
+                return;
+            }
+
+            _libraryPickTarget.PcmPath = assignPath;
+            _libraryPickTarget.ValidationError = null;
+            RefreshMsuState();
+            ShowStatus($"Assigned {entry.Name} to slot {_libraryPickTarget.SlotDisplay}", isError: false);
+        }
+
+        private void LibraryItemPlay_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not System.Windows.Controls.Button btn || btn.Tag is not MsuLibraryEntry entry) return;
+
+            if (_audioPlayer.IsPlaying) { _audioPlayer.Stop(); return; }
+
+            string path = entry.AssignablePath;
+            if (!entry.IsPlayable) return;
+
+            _audioPlayer.Play(path);
+        }
+
+        private void LibraryBrowseFile_Click(object sender, RoutedEventArgs e)
+        {
+            LibraryPopup.IsOpen = false;
+            if (_libraryPickTarget is null) return;
+
+            var dlg = new OpenFileDialog
+            {
+                Filter = "MSU-1 PCM (*.pcm)|*.pcm|All Audio|*.pcm;*.mp3;*.wav;*.wma;*.aac;*.m4a;*.aiff",
+                Title = $"Assign file for Slot {_libraryPickTarget.SlotDisplay} — {_libraryPickTarget.Name}"
+            };
+            if (dlg.ShowDialog() != true) return;
+
+            var validationErr = MsuPcmValidator.Validate(dlg.FileName);
+            if (validationErr is not null)
+            {
+                _libraryPickTarget.ValidationError = validationErr;
+                ShowStatus($"Invalid PCM: {validationErr}", isError: true);
+                return;
+            }
+
+            _libraryPickTarget.PcmPath = dlg.FileName;
+            _libraryPickTarget.ValidationError = null;
             RefreshMsuState();
         }
 
