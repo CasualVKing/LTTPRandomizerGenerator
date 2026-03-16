@@ -281,7 +281,12 @@
                         android:textSize="11sp"
                         android:layout_marginStart="4dp"
                         android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-                    <Button android:id="@+id/clearMsuBtn" android:text="@string/clear_msu_pack"
+                    <Button android:id="@+id/clearOstBtn" android:text="Clear OST"
+                        android:backgroundTint="#AA3333" android:textColor="#E0E0F0"
+                        android:textSize="11sp"
+                        android:layout_marginStart="4dp"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+                    <Button android:id="@+id/clearMsuBtn" android:text="Clear Tracks"
                         android:backgroundTint="#AA3333" android:textColor="#E0E0F0"
                         android:textSize="11sp"
                         android:layout_marginStart="4dp"

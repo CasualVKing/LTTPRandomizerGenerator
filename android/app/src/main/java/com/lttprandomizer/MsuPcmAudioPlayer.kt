@@ -3,20 +3,33 @@ package com.lttprandomizer
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.media.MediaPlayer
 import kotlinx.coroutines.*
 import java.io.RandomAccessFile
 
 class MsuPcmAudioPlayer {
     private var audioTrack: AudioTrack? = null
+    private var mediaPlayer: MediaPlayer? = null
     private var playbackJob: Job? = null
 
-    val isPlaying: Boolean get() = audioTrack?.playState == AudioTrack.PLAYSTATE_PLAYING
+    val isPlaying: Boolean get() =
+        audioTrack?.playState == AudioTrack.PLAYSTATE_PLAYING ||
+        mediaPlayer?.isPlaying == true
 
     var onPlaybackStopped: (() -> Unit)? = null
 
-    fun play(pcmPath: String, scope: CoroutineScope): String? {
+    fun play(path: String, scope: CoroutineScope): String? {
         stop()
 
+        val ext = path.substringAfterLast('.', "").lowercase()
+        return if (ext == "pcm") {
+            playPcm(path, scope)
+        } else {
+            playMedia(path, scope)
+        }
+    }
+
+    private fun playPcm(pcmPath: String, scope: CoroutineScope): String? {
         return try {
             val bufferSize = AudioTrack.getMinBufferSize(
                 44100, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT
@@ -68,6 +81,35 @@ class MsuPcmAudioPlayer {
         }
     }
 
+    private fun playMedia(path: String, scope: CoroutineScope): String? {
+        return try {
+            val player = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                setDataSource(path)
+                prepare()
+            }
+            mediaPlayer = player
+
+            player.setOnCompletionListener {
+                scope.launch(Dispatchers.Main) {
+                    stop()
+                    onPlaybackStopped?.invoke()
+                }
+            }
+
+            player.start()
+            null
+        } catch (ex: Exception) {
+            stop()
+            "Playback error: ${ex.message}"
+        }
+    }
+
     fun stop() {
         playbackJob?.cancel()
         playbackJob = null
@@ -76,5 +118,10 @@ class MsuPcmAudioPlayer {
         } catch (_: IllegalStateException) { }
         audioTrack?.release()
         audioTrack = null
+        try {
+            mediaPlayer?.stop()
+        } catch (_: IllegalStateException) { }
+        mediaPlayer?.release()
+        mediaPlayer = null
     }
 }

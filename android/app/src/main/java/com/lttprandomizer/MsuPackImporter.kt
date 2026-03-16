@@ -97,7 +97,7 @@ object MsuPackImporter {
             }
 
             val manifest = PackManifest(version = 1, name = playlist.name, tracks = manifestTracks)
-            val manifestJson = json.encodeToString(manifest)
+            val manifestJson = json.encodeToString(PackManifest.serializer(), manifest)
             zipOut.putNextEntry(ZipEntry("manifest.json"))
             zipOut.write(manifestJson.toByteArray())
             zipOut.closeEntry()

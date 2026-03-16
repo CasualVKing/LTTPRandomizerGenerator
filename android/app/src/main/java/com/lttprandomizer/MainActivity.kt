@@ -117,7 +117,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val importOstZipLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+    private val importOstZipLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri ?: return@registerForActivityResult
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
@@ -869,7 +869,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.importOstZipBtn.setOnClickListener {
-            importOstZipLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
+            importOstZipLauncher.launch("*/*")
         }
 
         binding.includeMsuSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -877,6 +877,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.exportLttpackBtn.setOnClickListener { exportMsuPack() }
+        binding.clearOstBtn.setOnClickListener {
+            audioPlayer.stop()
+            for (t in msuTracks) { t.isPlayingOriginal = false }
+            MsuOriginalSoundtrack.clearCache(this, msuTracks)
+            msuAdapter?.notifyDataSetChanged()
+            showStatus("Original soundtrack cleared.")
+        }
         binding.clearMsuBtn.setOnClickListener { clearMsuPack() }
 
         // Library folder
